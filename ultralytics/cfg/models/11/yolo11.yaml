@@ -236,53 +236,69 @@
 # Parameters
 nc: 1  # nombre de classes (ex: tumeur)
 
-scales: # model compound scaling constants, i.e. 'model=yolo11n.yaml' will call yolo11.yaml with scale 'n'
-  # [depth, width, max_channels]
-  n: [0.50, 0.25, 1024] # summary: 181 layers, 2624080 parameters, 2624064 gradients, 6.6 GFLOPs
-  s: [0.50, 0.50, 1024] # summary: 181 layers, 9458752 parameters, 9458736 gradients, 21.7 GFLOPs
-  m: [0.50, 1.00, 512] # summary: 231 layers, 20114688 parameters, 20114672 gradients, 68.5 GFLOPs
-  l: [1.00, 1.00, 512] # summary: 357 layers, 25372160 parameters, 25372144 gradients, 87.6 GFLOPs
-  x: [1.00, 1.50, 512] # summary: 357 layers, 56966176 parameters, 56966160 gradients, 196.0 GFLOPs
+scales:
+  n: [0.50, 0.25, 1024]
+  s: [0.50, 0.50, 1024]
+  m: [0.50, 1.00, 512]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.50, 512]
 
-
+# Backbone
 backbone:
-  - [-1, 1, Conv, [64, 3, 1]]        # P1/1 (pas de stride ici !)
-  - [-1, 1, Conv, [64, 3, 1]]        # toujours pas de stride
-  - [-1, 1, Conv, [128, 3, 2]]       # P2/2
-  - [-1, 2, C3k2, [128, False, 0.25]]
-  - [-1, 1, Conv, [256, 3, 2]]       # P3/4
-  - [-1, 2, C3k2, [256, False, 0.25]]
-  - [-1, 1, Conv, [512, 3, 2]]       # P4/8
-  - [-1, 2, C3k2, [512, True]]
-  - [-1, 1, Conv, [1024, 3, 2]]      # P5/16
-  - [-1, 2, C3k2, [1024, True]]
-  - [-1, 1, SPPF, [1024, 5]]
-  - [-1, 1, C2f, [1024, 1]]          # module plus léger qu’un C2PSA mais utile
+  - [-1, 1, Conv, [64, 3, 1]]        # 0 - P1/1
+  - [-1, 1, Conv, [64, 3, 1]]        # 1
+  - [-1, 1, Conv, [128, 3, 2]]       # 2 - P2/2
+  - [-1, 2, C3k2, [128, False, 0.25]] # 3
+  - [-1, 1, Conv, [256, 3, 2]]       # 4 - P3/4
+  - [-1, 2, C3k2, [256, False, 0.25]] # 5
+  - [-1, 1, Conv, [512, 3, 2]]       # 6 - P4/8
+  - [-1, 2, C3k2, [512, True]]       # 7
+  - [-1, 1, Conv, [1024, 3, 2]]      # 8 - P5/16
+  - [-1, 2, C3k2, [1024, True]]      # 9
+  - [-1, 1, SPPF, [1024, 5]]         # 10
+  - [-1, 1, C2f, [1024, 1]]          # 11
 
+# Head
 head:
-  # Détection sur P2 (ajoutée)
-  - [-3, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 2], 1, Concat, [1]]       # Fusion P2/2
-  - [-1, 2, C3k2, [128, False]]     # P2-smallest
+  # P5 → P4
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 12 (→ 512)
+  - [[-1, 7], 1, Concat, [1]]                  # 13
+  - [-1, 2, C3k2, [512, False]]                # 14
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 0], 1, Concat, [1]]       # Fusion P1/1 (ultra détail)
-  - [-1, 2, C3k2, [64, False]]      # Optional super-resolution block
+  # P4 → P3
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 15 (→ 256)
+  - [[-1, 5], 1, Concat, [1]]                  # 16
+  - [-1, 2, C3k2, [256, False]]                # 17
 
-  # Détection classique P3
-  - [-2, 1, Conv, [256, 3, 2]]
-  - [[-1, 5], 1, Concat, [1]]
-  - [-1, 2, C3k2, [256, False]]     # P3
+  # P3 → P2
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 18 (→ 128)
+  - [[-1, 3], 1, Concat, [1]]                  # 19
+  - [-1, 2, C3k2, [128, False]]                # 20
 
-  # Détection P4
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 7], 1, Concat, [1]]
-  - [-1, 2, C3k2, [512, False]]     # P4
+  # P2 → P1
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 21 (→ 64)
+  - [[-1, 1], 1, Concat, [1]]                  # 22
+  - [-1, 2, C3k2, [64, False]]                 # 23
 
-  # Détection P5
-  - [-1, 1, Conv, [1024, 3, 2]]
-  - [[-1, 10], 1, Concat, [1]]
-  - [-1, 2, C3k2, [1024, True]]     # P5
+  # Down from P1 to P2
+  - [-1, 1, Conv, [128, 3, 2]]                 # 24
+  - [[-1, 20], 1, Concat, [1]]                 # 25
+  - [-1, 2, C3k2, [128, False]]                # 26
 
-  # 4 niveaux de détection : P2, P3, P4, P5
-  - [[14, 17, 20, 23], 1, Detect, [nc]]
+  # Down from P2 to P3
+  - [-1, 1, Conv, [256, 3, 2]]                 # 27
+  - [[-1, 17], 1, Concat, [1]]                 # 28
+  - [-1, 2, C3k2, [256, False]]                # 29
+
+  # Down from P3 to P4
+  - [-1, 1, Conv, [512, 3, 2]]                 # 30
+  - [[-1, 14], 1, Concat, [1]]                 # 31
+  - [-1, 2, C3k2, [512, False]]                # 32
+
+  # Down from P4 to P5
+  - [-1, 1, Conv, [1024, 3, 2]]                # 33
+  - [[-1, 11], 1, Concat, [1]]                 # 34
+  - [-1, 2, C3k2, [1024, True]]                # 35
+
+  # Final Detect layers (P1, P2, P3, P4)
+  - [[23, 26, 29, 32, 35], 1, Detect, [nc]]    # 36
