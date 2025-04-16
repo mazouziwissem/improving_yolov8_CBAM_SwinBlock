@@ -244,7 +244,10 @@
 # Ultralytics YOLO11n custom for small object detection (P2/4 added and fixed)
 
 # Parameters
-nc: 1  # number of classes
+# Ultralytics YOLO11n custom for small object detection (P2/4 added and fixed)
+
+# Parameters
+nc: 80  # nombre de classes (à adapter pour les tumeurs)
 scales:
   n: [0.50, 0.25, 1024]
   s: [0.50, 0.50, 1024]
@@ -256,7 +259,7 @@ scales:
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]             # 0 - P1/2
   - [-1, 1, Conv, [128, 3, 2]]            # 1 - P2/4
-  - [-1, 2, C3k2, [128, False]]           # 2 - P2 enhanced
+  - [-1, 2, C3k2, [128, False]]           # 2 - P2 amélioré
   - [-1, 1, Conv, [256, 3, 2]]            # 3 - P3/8
   - [-1, 2, C3k2, [256, False, 0.25]]     # 4
   - [-1, 1, Conv, [512, 3, 2]]            # 5 - P4/16
@@ -269,24 +272,24 @@ backbone:
 # Head
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 11 - up from P5/32 → P4
-  - [[-1, 6], 1, Concat, [1]]                   # 12 - cat with P4
+  - [[-1, 6], 1, Concat, [1]]                   # 12 - cat avec P4
   - [-1, 2, C3k2, [512, False]]                 # 13 - P4/16
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 14 - up to P3
-  - [[-1, 4], 1, Concat, [1]]                   # 15 - cat with P3
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 14 - up vers P3
+  - [[-1, 4], 1, Concat, [1]]                   # 15 - cat avec P3
   - [-1, 2, C3k2, [256, False]]                 # 16 - P3/8
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 17 - up to P2 resolution
-  - [2, 1, nn.Upsample, [None, 2, "nearest"]]    # 18 - upsample P2 (from 1/4 → 1/2)
-  - [[17, -1], 1, Concat, [1]]                  # 19 - concat head + P2
-  - [-1, 2, C3k2, [128, False]]                 # 20 - P2/4 output
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 17 - up vers P2
+  - [2, 1, nn.Identity, []]                     # 18 - P2 déjà à 1/4
+  - [[17, 18], 1, Concat, [1]]                  # 19 - cat head up + P2
+  - [-1, 2, C3k2, [128, False]]                 # 20 - P2/4 output (petits objets)
 
   - [16, 1, Conv, [256, 3, 2]]                  # 21 - down to P4
-  - [[-1, 13], 1, Concat, [1]]                  # 22 - cat with P4 head
+  - [[-1, 13], 1, Concat, [1]]                  # 22 - cat avec P4
   - [-1, 2, C3k2, [512, False]]                 # 23 - P4/16
 
   - [-1, 1, Conv, [512, 3, 2]]                  # 24 - down to P5
-  - [[-1, 10], 1, Concat, [1]]                  # 25 - cat with P5 head
+  - [[-1, 10], 1, Concat, [1]]                  # 25 - cat avec P5
   - [-1, 2, C3k2, [1024, True]]                 # 26 - P5/32
 
   - [[20, 23, 26], 1, Detect, [nc]]             # Detect: P2/4, P4/16, P5/32
