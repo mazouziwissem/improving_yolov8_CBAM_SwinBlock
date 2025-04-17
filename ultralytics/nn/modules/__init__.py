@@ -60,6 +60,7 @@ from .block import (
     SCDown,
     TorchVision,
     BiFPN,
+    SE,
 )
 from .conv import (
     CBAM,
@@ -180,5 +181,6 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
-    "BiFPN"
+    "BiFPN",
+    "SE",
 )
