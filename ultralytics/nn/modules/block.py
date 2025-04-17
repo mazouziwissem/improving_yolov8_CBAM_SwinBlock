@@ -1964,3 +1964,46 @@ class SAVPE(nn.Module):
         aggregated = score.transpose(-2, -3) @ x.reshape(B, self.c, C // self.c, -1).transpose(-1, -2)
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
+
+class BiFPNBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv3 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(channels)
+        self.relu = nn.ReLU()
+
+    def forward(self, p3, p4, p5):
+        # Upsample
+        p5_up = F.interpolate(p5, scale_factor=2, mode='nearest')
+        p4 = self.conv3(p4 + p5_up)
+        p4 = self.bn3(p4)
+        p4 = self.relu(p4)
+
+        p4_up = F.interpolate(p4, scale_factor=2, mode='nearest')
+        p3 = self.conv3(p3 + p4_up)
+        p3 = self.bn3(p3)
+        p3 = self.relu(p3)
+
+        # Downsample again
+        p3_down = F.max_pool2d(p3, 2)
+        p4 = self.conv3(p4 + p3_down)
+        p4 = self.bn3(p4)
+        p4 = self.relu(p4)
+
+        p4_down = F.max_pool2d(p4, 2)
+        p5 = self.conv3(p5 + p4_down)
+        p5 = self.bn3(p5)
+        p5 = self.relu(p5)
+
+        return p3, p4, p5
+
+class BiFPN(nn.Module):
+    def __init__(self, channels=256, repeats=2):
+        super().__init__()
+        self.blocks = nn.ModuleList([BiFPNBlock(channels) for _ in range(repeats)])
+
+    def forward(self, inputs):
+        p5, p4, p3 = inputs  # from deepest to shallowest
+        for block in self.blocks:
+            p3, p4, p5 = block(p3, p4, p5)
+        return [p3, p4, p5]
