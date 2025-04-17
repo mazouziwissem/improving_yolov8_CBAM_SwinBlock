@@ -2005,27 +2005,42 @@ class BiFPNBlock(nn.Module):
 
         return p3, p4, p5
 
-# Classe principale BiFPN pour fusion multi-échelle
-class BiFPN(nn.Module):
-    def __init__(self, channels=256, repeats=2):
-        super(BiFPN, self).__init__()
-        self.blocks = nn.ModuleList([BiFPNBlock(channels) for _ in range(repeats)])
+class BiFPNBlock(nn.Module):
+    def __init__(self, channels, eps=1e-4):
+        super(BiFPNBlock, self).__init__()
+
+        self.eps = eps
+        self.w1 = nn.Parameter(torch.ones(2, dtype=torch.float32))
+        self.w2 = nn.Parameter(torch.ones(3, dtype=torch.float32))
+
+        self.conv3_up = Conv(channels, channels, 3, 1)
+        self.conv4_up = Conv(channels, channels, 3, 1)
+        self.conv4_down = Conv(channels, channels, 3, 1)
+        self.conv5_down = Conv(channels, channels, 3, 1)
 
     def forward(self, inputs):
-        p5, p4, p3 = inputs  # Entrée (P5, P4, P3)
-        for block in self.blocks:
-            p3, p4, p5 = block(p3, p4, p5)  # Fusion itérative
-        return [p3, p4, p5]
+        p3, p4, p5 = inputs
 
-class SE(nn.Module):
-    def __init__(self, in_channels, reduction=16):
-        super(SE, self).__init__()
-        self.fc1 = nn.Conv2d(in_channels, in_channels // reduction, 1, bias=False)
-        self.fc2 = nn.Conv2d(in_channels // reduction, in_channels, 1, bias=False)
+        # Upsample pathway
+        w = F.relu(self.w1)
+        w = w / (torch.sum(w, dim=0) + self.eps)
+        p4_td = self.conv4_up(w[0] * p4 + w[1] * F.interpolate(p5, scale_factor=2, mode="nearest"))
+        p3_td = self.conv3_up(w[0] * p3 + w[1] * F.interpolate(p4_td, scale_factor=2, mode="nearest"))
+
+        # Downsample pathway
+        w = F.relu(self.w2)
+        w = w / (torch.sum(w, dim=0) + self.eps)
+        p4_out = self.conv4_down(w[0] * p4 + w[1] * p4_td + w[2] * F.max_pool2d(p3_td, 2))
+        p5_out = self.conv5_down(w[0] * p5 + w[1] * p5 + w[2] * F.max_pool2d(p4_out, 2))
+
+        return [p3_td, p4_out, p5_out]
+
+class BiFPN(nn.Module):
+    def __init__(self, channels=256, num_blocks=2):
+        super(BiFPN, self).__init__()
+        self.blocks = nn.Sequential(*[BiFPNBlock(channels) for _ in range(num_blocks)])
 
     def forward(self, x):
-        avg_pool = torch.mean(x, dim=[2, 3], keepdim=True)
-        max_pool, _ = torch.max(x, dim=[2, 3], keepdim=True)
-        se = torch.cat([avg_pool, max_pool], dim=1)
-        se = self.fc2(F.relu(self.fc1(se)))
-        return x * torch.sigmoid(se)
+        for block in self.blocks:
+            x = block(x)
+        return x

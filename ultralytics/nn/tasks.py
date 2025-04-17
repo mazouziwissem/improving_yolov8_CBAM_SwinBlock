@@ -1486,6 +1486,9 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c2 = args[0]
             c1 = ch[f]
             args = [*args[1:]]
+        elif m == 'BiFPN':
+            from ultralytics.nn.modules.block import BiFPN
+
         else:
             c2 = ch[f]
 
