@@ -342,4 +342,4 @@ head:
   - [-1, 2, C3k2, [1024, True]]                 # 26
 
   # Détection sur 3 échelles, y compris P2 pour petits objets
-  - [[20, 23, 26], 1, Detect, [nc]]
+  - [[16, 19, 26], 1, Detect, [nc]]
