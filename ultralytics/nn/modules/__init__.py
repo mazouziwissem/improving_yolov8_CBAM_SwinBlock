@@ -17,7 +17,8 @@ Examples:
     >>> os.system(f"onnxslim {f} {f} && open {f}")  # pip install onnxslim
 """
 
-
+from .c2pss import C2PSS
+from .dysample import Dysample
 from .block import (
     C1,
     C2,
@@ -181,4 +182,6 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
+    "C2PSS",
+    "Dysample",
 )
