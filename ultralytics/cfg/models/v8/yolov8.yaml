@@ -81,7 +81,7 @@ head:
   - [-1, 3, C2f, [256]]                          # 15
 
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16
-  - [[-1, 2], 1, Concat, [1]]                   # 17 ✅ fixed mismatch by using processed P2
+  - [[-1, 2], 1, Concat, [1]]                   # 17 fixed mismatch by using processed P2
   - [-1, 3, C2f, [128]]                          # 18 (P2/4)
 
   - [-1, 1, Conv, [256, 3, 2]]                   # 19
