@@ -102,55 +102,107 @@
 # YOLOv8 custom model for tumor detection - Modified for improved mAP (Version 2)
 # Based on the original, with subtle but impactful adjustments
 
-nc: 1  # number of classes: tumor
+# nc: 1  # number of classes: tumor
 
-# Adjusted scales for potentially better feature extraction
+# # Adjusted scales for potentially better feature extraction
+# scales:
+#   # n: [0.35, 0.25, 1024]  # Increased slightly
+#   # s: [0.35, 0.50, 1024]  # Increased slightly
+#   n: [0.33, 0.25, 1024]
+#   s: [0.33, 0.50, 1024]
+#   m: [0.67, 0.75, 768]
+#   l: [1.00, 1.00, 512]
+#   x: [1.00, 1.25, 512]
+
+# # Backbone - Minor adjustments to C2f blocks for increased capacity
+# backbone:
+#   - [-1, 1, Conv, [64, 3, 2]]      # 0 - P1/2
+#   - [-1, 1, Conv, [128, 3, 2]]     # 1 - P2/4
+#   - [-1, 3, C2f, [128, True]]      # 2
+#   - [-1, 1, Conv, [256, 3, 2]]     # 3 - P3/8
+#   - [-1, 8, C2f, [256, True]]      # 4  # Increased from 6 to 8
+#   - [-1, 1, Conv, [512, 3, 2]]     # 5 - P4/16
+#   - [-1, 8, C2f, [512, True]]      # 6  # Increased from 6 to 8
+#   - [-1, 1, Conv, [1024, 3, 2]]    # 7 - P5/32
+#   - [-1, 3, C2f, [1024, True]]     # 8
+#   - [-1, 1, SPPF, [1024, 5]]       # 9
+
+# # Head - Minor adjustments, potentially adding a bit more capacity
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 10
+#   - [[-1, 6], 1, Concat, [1]]                   # 11
+#   - [-1, 3, C2f, [512]]                          # 12
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 13
+#   - [[-1, 4], 1, Concat, [1]]                   # 14
+#   - [-1, 3, C2f, [256]]                          # 15
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16
+#   - [[-1, 2], 1, Concat, [1]]                   # 17 fixed mismatch by using processed P2
+#   - [-1, 3, C2f, [128]]                          # 18 (P2/4)
+
+#   - [-1, 1, Conv, [256, 3, 2]]                   # 19
+#   - [[-1, 15], 1, Concat, [1]]                   # 20
+#   - [-1, 3, C2f, [256]]                          # 21 (P3/8)
+
+#   - [-1, 1, Conv, [512, 3, 2]]                   # 22
+#   - [[-1, 12], 1, Concat, [1]]                   # 23
+#   - [-1, 3, C2f, [512]]                          # 24 (P4/16)
+
+#   - [-1, 1, Conv, [1024, 3, 2]]                  # 25
+#   - [[-1, 9], 1, Concat, [1]]                    # 26
+#   - [-1, 3, C2f, [1024]]                         # 27 (P5/32)
+
+#   - [[18, 21, 24, 27], 1, Detect, [nc]]          # 28 - Detect at P2, P3, P4, P5
+
+
+# YOLOv8 Object Detection Model (Adapted for Tumor Detection)
+
+# License
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Model configuration for tumor detection (YOLOv8)
+
+# Parameters
+nc: 1  # Number of classes (1 class: tumor)
 scales:
-  # n: [0.35, 0.25, 1024]  # Increased slightly
-  # s: [0.35, 0.50, 1024]  # Increased slightly
-  n: [0.33, 0.25, 1024]
-  s: [0.33, 0.50, 1024]
-  m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
+  n: [0.33, 0.25, 1024]  # Smallest model (YOLOv8n)
+  s: [0.33, 0.50, 1024]  # YOLOv8s (adjustable scaling for performance)
+  m: [0.67, 0.75, 768]   # YOLOv8m (medium-sized model)
+  l: [1.00, 1.00, 512]   # YOLOv8l (large model)
+  x: [1.00, 1.25, 512]   # YOLOv8x (extra-large model for better accuracy)
 
-# Backbone - Minor adjustments to C2f blocks for increased capacity
+# YOLOv8 Backbone Configuration
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]      # 0 - P1/2
-  - [-1, 1, Conv, [128, 3, 2]]     # 1 - P2/4
-  - [-1, 3, C2f, [128, True]]      # 2
-  - [-1, 1, Conv, [256, 3, 2]]     # 3 - P3/8
-  - [-1, 8, C2f, [256, True]]      # 4  # Increased from 6 to 8
-  - [-1, 1, Conv, [512, 3, 2]]     # 5 - P4/16
-  - [-1, 8, C2f, [512, True]]      # 6  # Increased from 6 to 8
-  - [-1, 1, Conv, [1024, 3, 2]]    # 7 - P5/32
-  - [-1, 3, C2f, [1024, True]]     # 8
-  - [-1, 1, SPPF, [1024, 5]]       # 9
+  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+  - [-1, 3, C2f, [128, True]]  # Improved feature extraction
+  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+  - [-1, 8, C2f, [256, True]]  # Increased depth for better feature extraction
+  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+  - [-1, 8, C2f, [512, True]]  # Deeper convolution for better small object detection
+  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+  - [-1, 3, C2f, [1024, True]] # Improved backbone for better feature maps
+  - [-1, 1, SPPF, [1024, 5]]   # 9-Pooling for larger receptive fields
 
-# Head - Minor adjustments, potentially adding a bit more capacity
+# YOLOv8 Head Configuration (Detection heads for different scales)
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 10
-  - [[-1, 6], 1, Concat, [1]]                   # 11
-  - [-1, 3, C2f, [512]]                          # 12
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # Upsample the feature map
+  - [[-1, 6], 1, Concat, [1]]  # Concatenate with P4 from the backbone
+  - [-1, 3, C2f, [512]]  # Improved feature fusion
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 13
-  - [[-1, 4], 1, Concat, [1]]                   # 14
-  - [-1, 3, C2f, [256]]                          # 15
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # Upsample further
+  - [[-1, 4], 1, Concat, [1]]  # Concatenate with P3 from the backbone
+  - [-1, 3, C2f, [256]]  # P3/8-small detection head
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16
-  - [[-1, 2], 1, Concat, [1]]                   # 17 fixed mismatch by using processed P2
-  - [-1, 3, C2f, [128]]                          # 18 (P2/4)
+  - [-1, 1, Conv, [256, 3, 2]]  # Convolution for finer scaling
+  - [[-1, 12], 1, Concat, [1]]  # Concatenate with P4 head
+  - [-1, 3, C2f, [512]]  # P4/16-medium detection head
 
-  - [-1, 1, Conv, [256, 3, 2]]                   # 19
-  - [[-1, 15], 1, Concat, [1]]                   # 20
-  - [-1, 3, C2f, [256]]                          # 21 (P3/8)
+  - [-1, 1, Conv, [512, 3, 2]]  # Further downsample
+  - [[-1, 9], 1, Concat, [1]]  # Concatenate with P5 head
+  - [-1, 3, C2f, [1024]]  # P5/32-large detection head
 
-  - [-1, 1, Conv, [512, 3, 2]]                   # 22
-  - [[-1, 12], 1, Concat, [1]]                   # 23
-  - [-1, 3, C2f, [512]]                          # 24 (P4/16)
+  - [[15, 18, 21], 1, Detect, [nc]]  # Final detection layers for tumor class
 
-  - [-1, 1, Conv, [1024, 3, 2]]                  # 25
-  - [[-1, 9], 1, Concat, [1]]                    # 26
-  - [-1, 3, C2f, [1024]]                         # 27 (P5/32)
 
-  - [[18, 21, 24, 27], 1, Detect, [nc]]          # 28 - Detect at P2, P3, P4, P5
