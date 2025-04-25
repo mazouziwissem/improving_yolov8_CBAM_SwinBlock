@@ -1965,3 +1965,18 @@ class SAVPE(nn.Module):
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
+# Ajoute la classe à la fin du fichier block.py
+class C3K2(nn.Module):
+    def __init__(self, c1, c2, shortcut=True):
+        super().__init__()
+        c_ = int(c2 / 2)
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c_, c_, 3, 1)
+        self.cv3 = Conv(2 * c_, c2, 1, 1)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        y1 = self.cv1(x)
+        y2 = self.cv2(y1)
+        out = self.cv3(torch.cat((y1, y2), dim=1))
+        return x + out if self.add else out
