@@ -104,6 +104,7 @@ from .transformer import (
 )
 
 from .swin_block import SwinBlock
+from .cbam import CBAM
 __all__ = (
     "Conv",
     "Conv2",
@@ -182,5 +183,6 @@ __all__ = (
     "Index",
     "A2C2f",
     "SwinBlock",
+    "CBAM"
 )
 
