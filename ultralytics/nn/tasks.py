@@ -9,6 +9,8 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+from ultralytics.nn.modules.swin_block import SwinBlock
+globals()['SwinBlock'] = SwinBlock
 
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
