@@ -99,7 +99,7 @@
 
 
 # YOLOv8 Model Configuration
-nc: 1  # Number of classes in your dataset (adjust this accordingly)
+nc: 1  # Number of classes in your dataset
 # Model Scale Configuration
 scales:
   n: [0.33, 0.25, 1024]
@@ -107,37 +107,38 @@ scales:
   m: [0.67, 0.75, 768]
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
-# Backbone avec SwinBlock stratégiques
+# Backbone avec SwinBlock corrigés
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]              # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]             # 1-P2/4
   - [-1, 3, C2f, [128, True]]              # 2
-  - [-1, 1, SwinBlock, [128]]              # 3 ← Fixed dimension (was 32)
-  - [-1, 1, Conv, [256, 3, 2]]             # 4-P3/8
-  - [-1, 3, C2f, [256, True]]              # 5
-  - [-1, 1, SwinBlock, [256]]              # 6 ← Fixed dimension (was 128)
-  - [-1, 1, Conv, [512, 3, 2]]             # 7-P4/16
-  - [-1, 3, C2f, [512, True]]              # 8
-  - [-1, 1, SwinBlock, [512]]              # 9 ← Fixed dimension (was 256)
-  - [-1, 1, Conv, [1024, 3, 2]]            # 10-P5/32
-  - [-1, 3, C2f, [1024, True]]             # 11
-  - [-1, 1, SPPF, [1024, 5]]               # 12 ← fin du backbone
-# Head inchangé
+  # Supprimé le SwinBlock problématique à cette résolution
+  - [-1, 1, Conv, [256, 3, 2]]             # 3-P3/8
+  - [-1, 3, C2f, [256, True]]              # 4
+  # Supprimé le SwinBlock problématique à cette résolution
+  - [-1, 1, Conv, [512, 3, 2]]             # 5-P4/16
+  - [-1, 3, C2f, [512, True]]              # 6
+  # Supprimé le SwinBlock problématique à cette résolution
+  - [-1, 1, Conv, [1024, 3, 2]]            # 7-P5/32
+  - [-1, 3, C2f, [1024, True]]             # 8
+  - [-1, 1, SwinBlock, [1024]]             # 9 ← Seul SwinBlock à la dimension 1024 compatible
+  - [-1, 1, SPPF, [1024, 5]]               # 10
+# Head avec indices ajustés
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 13
-  - [[-1, 9], 1, Concat, [1]]                    # 14 (changed from 6 to 9)
-  - [-1, 3, C2f, [512]]                          # 15
-  # Second detection head
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16
-  - [[-1, 6], 1, Concat, [1]]                    # 17 (changed from 4 to 6)
-  - [-1, 3, C2f, [256]]                          # 18
-  # Third detection head
-  - [-1, 1, Conv, [256, 3, 2]]                   # 19
-  - [[-1, 15], 1, Concat, [1]]                   # 20 (changed from 13 to 15)
-  - [-1, 3, C2f, [512]]                          # 21
-  # Fourth detection head
-  - [-1, 1, Conv, [512, 3, 2]]                   # 22
-  - [[-1, 11], 1, Concat, [1]]                   # 23 (changed from 10 to 11)
-  - [-1, 3, C2f, [1024]]                         # 24
-  # Final Detect layers
-  - [[18, 21, 24], 1, Detect, [nc]]              # 25 (changed indices: was [16, 19, 22])
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 11
+  - [[-1, 6], 1, Concat, [1]]                    # 12
+  - [-1, 3, C2f, [512]]                          # 13
+  
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 14
+  - [[-1, 4], 1, Concat, [1]]                    # 15
+  - [-1, 3, C2f, [256]]                          # 16
+  
+  - [-1, 1, Conv, [256, 3, 2]]                   # 17
+  - [[-1, 13], 1, Concat, [1]]                   # 18
+  - [-1, 3, C2f, [512]]                          # 19
+  
+  - [-1, 1, Conv, [512, 3, 2]]                   # 20
+  - [[-1, 8], 1, Concat, [1]]                    # 21
+  - [-1, 3, C2f, [1024]]                         # 22
+  
+  - [[16, 19, 22], 1, Detect, [nc]]              # 23
