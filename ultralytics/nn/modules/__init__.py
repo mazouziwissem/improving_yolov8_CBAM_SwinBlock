@@ -103,7 +103,7 @@ from .transformer import (
     TransformerLayer,
 )
 
-
+from .cab import CAB 
 __all__ = (
     "Conv",
     "Conv2",
@@ -181,5 +181,6 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
+    "CAB",
 
 )
