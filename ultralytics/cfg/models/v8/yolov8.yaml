@@ -115,16 +115,19 @@ backbone:
   - [-1, 1, Conv, [64, 3, 2]]              # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]             # 1-P2/4
   - [-1, 3, C2f, [128, True]]              # 2
-  - [-1, 1, SwinBlock, [128]]              # 3 ← après C2f, même channels
+  - [-1, 1, SwinBlock, [32]]              # 3 ← ici, sûr
   - [-1, 1, Conv, [256, 3, 2]]             # 4-P3/8
   - [-1, 3, C2f, [256, True]]              # 5
-  - [-1, 1, SwinBlock, [256]]              # 6 ← résolution plus basse = + utile
+  - [-1, 1, SwinBlock, [128]]              # 6 ← résolution + stable
   - [-1, 1, Conv, [512, 3, 2]]             # 7-P4/16
   - [-1, 3, C2f, [512, True]]              # 8
-  - [-1, 1, SwinBlock, [512]]              # 9
+  - [-1, 1, SwinBlock, [256]]              # 9 ← optionnel mais pertinent
   - [-1, 1, Conv, [1024, 3, 2]]            # 10-P5/32
   - [-1, 3, C2f, [1024, True]]             # 11
-  - [-1, 1, SPPF, [1024, 5]]               # 12
+  - [-1, 1, SPPF, [1024, 5]]               # 12 ← fin du backbone
+
+# head inchangé
+
 
 
 # Head with multiple detection layers
