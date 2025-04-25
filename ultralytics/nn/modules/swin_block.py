@@ -76,7 +76,8 @@ class SwinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
-        x_ = x_.view(B, -1, C)  # flatten spatial to sequence
+        #x_ = x_.view(B, -1, C)  # flatten spatial to sequence
+        x_ = x_.view(B, H * W, self.dim)  # self.dim = 128, cohérent avec LayerNorm
 
         shortcut = x_
         x_ = self.norm1(x_)
