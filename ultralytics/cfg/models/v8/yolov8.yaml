@@ -107,38 +107,38 @@ scales:
   m: [0.67, 0.75, 768]
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
-# Backbone avec SwinBlock corrigés
+# Backbone avec CustomSwinBlock
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]              # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]             # 1-P2/4
   - [-1, 3, C2f, [128, True]]              # 2
-  # Supprimé le SwinBlock problématique à cette résolution
-  - [-1, 1, Conv, [256, 3, 2]]             # 3-P3/8
-  - [-1, 3, C2f, [256, True]]              # 4
-  # Supprimé le SwinBlock problématique à cette résolution
-  - [-1, 1, Conv, [512, 3, 2]]             # 5-P4/16
-  - [-1, 3, C2f, [512, True]]              # 6
-  # Supprimé le SwinBlock problématique à cette résolution
-  - [-1, 1, Conv, [1024, 3, 2]]            # 7-P5/32
-  - [-1, 3, C2f, [1024, True]]             # 8
-  - [-1, 1, SwinBlock, [1024]]             # 9 ← Seul SwinBlock à la dimension 1024 compatible
-  - [-1, 1, SPPF, [1024, 5]]               # 10
+  - [-1, 1, SwinBlock, [128]]        # 3 ← Bloc personnalisé
+  - [-1, 1, Conv, [256, 3, 2]]             # 4-P3/8
+  - [-1, 3, C2f, [256, True]]              # 5
+  - [-1, 1, SwinBlock, [256]]        # 6 ← Bloc personnalisé
+  - [-1, 1, Conv, [512, 3, 2]]             # 7-P4/16
+  - [-1, 3, C2f, [512, True]]              # 8
+  - [-1, 1, SwinBlock, [512]]        # 9 ← Bloc personnalisé
+  - [-1, 1, Conv, [1024, 3, 2]]            # 10-P5/32
+  - [-1, 3, C2f, [1024, True]]             # 11
+  - [-1, 1, SwinBlock, [1024]]       # 12 ← Bloc personnalisé
+  - [-1, 1, SPPF, [1024, 5]]               # 13
 # Head avec indices ajustés
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 11
-  - [[-1, 6], 1, Concat, [1]]                    # 12
-  - [-1, 3, C2f, [512]]                          # 13
-  
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 14
-  - [[-1, 4], 1, Concat, [1]]                    # 15
-  - [-1, 3, C2f, [256]]                          # 16
+  - [[-1, 9], 1, Concat, [1]]                    # 15
+  - [-1, 3, C2f, [512]]                          # 16
   
-  - [-1, 1, Conv, [256, 3, 2]]                   # 17
-  - [[-1, 13], 1, Concat, [1]]                   # 18
-  - [-1, 3, C2f, [512]]                          # 19
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 17
+  - [[-1, 6], 1, Concat, [1]]                    # 18
+  - [-1, 3, C2f, [256]]                          # 19
   
-  - [-1, 1, Conv, [512, 3, 2]]                   # 20
-  - [[-1, 8], 1, Concat, [1]]                    # 21
-  - [-1, 3, C2f, [1024]]                         # 22
+  - [-1, 1, Conv, [256, 3, 2]]                   # 20
+  - [[-1, 16], 1, Concat, [1]]                   # 21
+  - [-1, 3, C2f, [512]]                          # 22
   
-  - [[16, 19, 22], 1, Detect, [nc]]              # 23
+  - [-1, 1, Conv, [512, 3, 2]]                   # 23
+  - [[-1, 11], 1, Concat, [1]]                   # 24
+  - [-1, 3, C2f, [1024]]                         # 25
+  
+  - [[19, 22, 25], 1, Detect, [nc]]              # 26
