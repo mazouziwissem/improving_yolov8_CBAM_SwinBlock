@@ -103,7 +103,7 @@ from .transformer import (
     TransformerLayer,
 )
 
-
+from ultralytics.nn.modules.swin_block import SwinBlock
 __all__ = (
     "Conv",
     "Conv2",
@@ -181,6 +181,6 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
-
+    "SwinBlock",
 )
-from ultralytics.nn.modules.swin_block import SwinBlock
+
