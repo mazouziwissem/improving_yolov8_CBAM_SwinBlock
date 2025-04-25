@@ -60,7 +60,6 @@ from .block import (
     ResNetLayer,
     SCDown,
     TorchVision,
-    CAB,
 )
 from .conv import (
     CBAM,
@@ -182,5 +181,6 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
-    "CAB",
+
 )
+from ultralytics.nn.modules.swin_block import SwinBlock
