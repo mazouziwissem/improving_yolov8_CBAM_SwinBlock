@@ -99,7 +99,8 @@ class SwinBlock(nn.Module):
         self.qkv_bias = qkv_bias
 
         # define attention and MLP
-        self.attn = nn.MultiheadAttention(dim, num_heads, bias=qkv_bias)
+        self.attn = nn.MultiheadAttention(dim, num_heads, bias=qkv_bias, batch_first=True)
+        
         self.mlp = nn.Sequential(
             nn.Linear(dim, int(dim * mlp_ratio)),
             nn.GELU(),
