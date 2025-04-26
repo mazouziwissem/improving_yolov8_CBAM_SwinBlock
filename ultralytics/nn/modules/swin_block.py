@@ -60,10 +60,13 @@ import torch
 import torch.nn as nn
 
 class SwinBlock(nn.Module):
-    def __init__(self, dim, num_heads=4, window_size=7):
+    def __init__(self, dim=128, num_heads=4, window_size=7, in_channels=None):
         super().__init__()
         self.dim = dim
         self.window_size = window_size
+
+        self.input_proj = None  # On initialise comme None, on l'ajoute si besoin dans forward
+
         self.norm1 = nn.LayerNorm(dim)
         self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
         self.norm2 = nn.LayerNorm(dim)
@@ -74,11 +77,16 @@ class SwinBlock(nn.Module):
         )
 
     def forward(self, x):
-        
-        x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
         B, C, H, W = x.shape
-        #x_ = x_.view(B, -1, C)  # flatten spatial to sequence
-        x_ = x_.view(B, H * W, C)  # self.dim = 128, cohérent avec LayerNorm
+
+        # Projeter l'entrée si C != self.dim
+        if C != self.dim:
+            if self.input_proj is None:
+                self.input_proj = nn.Conv2d(C, self.dim, kernel_size=1).to(x.device)
+            x = self.input_proj(x)
+
+        x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
+        x_ = x_.view(B, H * W, self.dim)  # (B, H*W, dim)
 
         shortcut = x_
         x_ = self.norm1(x_)
@@ -86,5 +94,5 @@ class SwinBlock(nn.Module):
         x_ = shortcut + attn_out
 
         x_ = x_ + self.mlp(self.norm2(x_))
-        x_ = x_.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()  # back to (B, C, H, W)
+        x_ = x_.view(B, H, W, self.dim).permute(0, 3, 1, 2).contiguous()  # back to (B, C, H, W)
         return x_
