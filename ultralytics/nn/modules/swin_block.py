@@ -59,40 +59,68 @@
 import torch
 import torch.nn as nn
 
-class SwinBlock(nn.Module):
-    def __init__(self, dim=128, num_heads=4, window_size=7, in_channels=None):
-        super().__init__()
-        self.dim = dim
-        self.window_size = window_size
+def window_partition(x, window_size):
+    B, C, H, W = x.size()
+    x = x.view(B, C, H // window_size, window_size, W // window_size, window_size)
+    windows = x.permute(0, 2, 4, 3, 5, 1).contiguous().view(-1, window_size, window_size, C)
+    return windows
 
-        # Système pour projeter au bon nombre de channels si besoin
-        self.input_proj = nn.Identity()
-        if in_channels is not None and in_channels != dim:
-            self.input_proj = nn.Conv2d(in_channels, dim, kernel_size=1)
+def window_reverse(windows, window_size, H, W):
+    B = int(windows.size(0) / (H * W / window_size / window_size))
+    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+    x = x.permute(0, 5, 1, 3, 2, 4).contiguous().view(B, -1, H, W)
+    return x
+
+class SwinBlock(nn.Module):
+    def __init__(self, dim, num_heads, window_size=7, shift_size=0, mlp_ratio=4., qkv_bias=True):
+        super(SwinBlock, self).__init__()
+        self.dim = dim
+        self.num_heads = num_heads
+        self.window_size = window_size
+        self.shift_size = shift_size
 
         self.norm1 = nn.LayerNorm(dim)
-        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
+        self.attn = nn.MultiheadAttention(dim, num_heads, bias=qkv_bias)
+
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
-            nn.Linear(dim, dim * 4),
+            nn.Linear(dim, int(dim * mlp_ratio)),
             nn.GELU(),
-            nn.Linear(dim * 4, dim)
+            nn.Linear(int(dim * mlp_ratio), dim)
         )
 
     def forward(self, x):
         B, C, H, W = x.shape
+        shortcut = x
+        x = x.flatten(2).transpose(1, 2)  # B, H*W, C
+        x = self.norm1(x)
 
-        # Toujours appliquer l'input_proj (c'est soit Identity, soit Conv2d)
-        x = self.input_proj(x)
+        # reshape into windows
+        x_windows = x.view(B, H, W, C)
+        if self.shift_size > 0:
+            x_windows = torch.roll(x_windows, shifts=(-self.shift_size, -self.shift_size), dims=(1,2))
+        windows = window_partition(x_windows.permute(0,3,1,2), self.window_size)  # nW*B, window_size, window_size, C
+        windows = windows.view(-1, self.window_size*self.window_size, C)
 
-        x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
-        x_ = x_.view(B, H * W, self.dim)  # (B, H*W, dim)
+        attn_windows, _ = self.attn(windows, windows, windows)
 
-        shortcut = x_
-        x_ = self.norm1(x_)
-        attn_out, _ = self.attn(x_, x_, x_)
-        x_ = shortcut + attn_out
+        attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)
+        attn_windows = attn_windows.permute(0,3,1,2)
+        x = window_reverse(attn_windows, self.window_size, H, W)
 
-        x_ = x_ + self.mlp(self.norm2(x_))
-        x_ = x_.view(B, H, W, self.dim).permute(0, 3, 1, 2).contiguous()  # back to (B, C, H, W)
-        return x_
+        if self.shift_size > 0:
+            x = torch.roll(x, shifts=(self.shift_size, self.shift_size), dims=(2,3))
+
+        x = x.flatten(2).transpose(1, 2)
+        x = shortcut.flatten(2).transpose(1, 2) + x
+        x = self.norm2(x)
+        x = x + self.mlp(x)
+
+        x = x.transpose(1,2).view(B, C, H, W)
+        return x
+
+# Notes:
+# - SwinBlock: custom module implementing Swin Transformer window-based self-attention
+# - CBAM: Convolutional Block Attention Module (channel & spatial attention)
+# - Reduced repeated C2f layers for lower complexity
+# - Removed SPPF to streamline feature aggregation
