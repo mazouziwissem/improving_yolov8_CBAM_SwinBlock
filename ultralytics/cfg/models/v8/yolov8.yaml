@@ -291,5 +291,5 @@ neck:
   - [-1, 3, C2f, [1024]]  # 21 (P5/32)
 
 head:
-  - [-1, 1, nn.Identity]  # Dummy layer for ONNX compatibility
+  - [-1, 1, nn.Identity,[]]  # Dummy layer for ONNX compatibility
   - [[15, 18, 21], 1, Detect, [nc]]  # Detect(P3, P4, P5)
