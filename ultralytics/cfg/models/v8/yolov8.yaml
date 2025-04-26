@@ -155,65 +155,53 @@
   
 #   - [[23, 27, 31], 1, Detect, [nc]]  # 32: Detect(P3, P4, P5)
 
-# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-# YOLOv8 architecture avancée avec attention et convolutions améliorées
 
 # Parameters
 nc: 1  # number of classes
-scales:  # model compound scaling constants
-  # [depth, width, max_channels]
-  n: [0.33, 0.25, 1024]  # YOLOv8n version
-  s: [0.33, 0.50, 1024]  # YOLOv8s version
-  m: [0.67, 0.75, 768]   # YOLOv8m version
-  l: [1.00, 1.00, 512]   # YOLOv8l version
-  x: [1.00, 1.25, 512]   # YOLOv8x version
+scales:
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
 
-# YOLOv8 backbone amélioré
 backbone:
-  # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
-  - [-1, 1, ESEAttn, [64]]     # 1-Efficient Squeeze-Excitation
-  - [-1, 1, Conv, [128, 3, 2]]  # 2-P2/4
-  - [-1, 1, ESEAttn, [128]]     # 3-Efficient SE
-  - [-1, 3, C2GC, [128, True]]  # 4-Global Context block
-  
-  - [-1, 1, Conv, [256, 3, 2]]  # 5-P3/8
-  - [-1, 1, ESEAttn, [256]]     # 6-Efficient SE
-  - [-1, 3, C2GC, [256, True]]  # 7
-  - [-1, 1, CARAFE, [256]]      # 8-CARAFE module pour feature refinement
-  
-  - [-1, 1, Conv, [512, 3, 2]]  # 9-P4/16
-  - [-1, 1, ESEAttn, [512]]     # 10-Efficient SE
-  - [-1, 3, C2GC, [512, True]]  # 11
-  - [-1, 1, CARAFE, [512]]      # 12-CARAFE module
-  
-  - [-1, 1, Conv, [1024, 3, 2]]  # 13-P5/32
-  - [-1, 1, ESEAttn, [1024]]     # 14-Efficient SE
-  - [-1, 3, C2GC, [1024, True]]  # 15
-  - [-1, 1, ASPP, [1024]]        # 16-ASPP pour multi-scale context
+  - [-1, 1, Conv, [64, 3, 2]]       # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]      # 1-P2/4
+  - [-1, 3, C2f, [128, True]]       # 2
+  - [-1, 1, CBAM, []]               # 3: CBAM après un gros bloc
+  - [-1, 1, Conv, [256, 3, 2]]      # 4-P3/8
+  - [-1, 6, C2f, [256, True]]       # 5
+  - [-1, 1, CBAM, []]               # 6
+  - [-1, 1, SwinBlock, []]          # 7: ajouter ici, pour meilleure feature extraction
+  - [-1, 1, Conv, [512, 3, 2]]      # 8-P4/16
+  - [-1, 6, C2f, [512, True]]       # 9
+  - [-1, 1, CBAM, []]               # 10
+  - [-1, 1, SwinBlock, []]          # 11
+  - [-1, 1, Conv, [1024, 3, 2]]     # 12-P5/32
+  - [-1, 3, C2f, [1024, True]]      # 13
+  - [-1, 1, CBAM, []]               # 14
+  - [-1, 1, SPPF, [1024, 5]]        # 15
 
-# YOLOv8 head amélioré avec feature pyramid refinement
 head:
-  - [-1, 1, BiCAU, [512, 2]]     # 17-Bidirectional Content-Aware Upsampling
-  - [[-1, 12], 1, Concat, [1]]   # 18: cat backbone P4
-  - [-1, 3, C2GC, [512]]         # 19
-  - [-1, 1, DyReLU, [512]]       # 20-Dynamic ReLU
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
+  - [[-1, 11], 1, Concat, [1]]                  # 17
+  - [-1, 3, C2f, [512]]                         # 18
+  - [-1, 1, CBAM, []]                           # 19
   
-  - [-1, 1, BiCAU, [256, 2]]     # 21-Bidirectional Content-Aware Upsampling
-  - [[-1, 8], 1, Concat, [1]]    # 22: cat backbone P3
-  - [-1, 3, C2GC, [256]]         # 23
-  - [-1, 1, DyReLU, [256]]       # 24-Dynamic ReLU (P3/8-small)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 20
+  - [[-1, 6], 1, Concat, [1]]                    # 21
+  - [-1, 3, C2f, [256]]                         # 22
+  - [-1, 1, CBAM, []]                           # 23
   
-  - [-1, 1, GSConv, [256, 3, 2]] # 25-GhostShuffleConv
-  - [[-1, 20], 1, Concat, [1]]   # 26: cat head P4
-  - [-1, 3, C2GC, [512]]         # 27
-  - [-1, 1, DyReLU, [512]]       # 28-Dynamic ReLU (P4/16-medium)
+  - [-1, 1, Conv, [256, 3, 2]]                  # 24
+  - [[-1, 19], 1, Concat, [1]]                   # 25
+  - [-1, 3, C2f, [512]]                         # 26
+  - [-1, 1, CBAM, []]                           # 27
   
-  - [-1, 1, GSConv, [512, 3, 2]] # 29-GhostShuffleConv
-  - [[-1, 16], 1, Concat, [1]]   # 30: cat backbone P5
-  - [-1, 3, C2GC, [1024]]        # 31
-  - [-1, 1, DyReLU, [1024]]      # 32-Dynamic ReLU (P5/32-large)
+  - [-1, 1, Conv, [512, 3, 2]]                  # 28
+  - [[-1, 14], 1, Concat, [1]]                   # 29
+  - [-1, 3, C2f, [1024]]                        # 30
+  - [-1, 1, CBAM, []]                           # 31
   
-  - [[24, 28, 32], 1, Detect, [nc]]  # 33: Detect(P3, P4, P5)
-
-  #CGCONV / C2GC / DYRELU/BI
+  - [[23, 27, 31], 1, Detect, [nc]]              # 32
