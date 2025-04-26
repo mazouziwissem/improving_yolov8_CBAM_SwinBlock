@@ -59,106 +59,32 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-
-class WindowAttention(nn.Module):
-    def __init__(self, dim, window_size, num_heads):
-        super().__init__()
-        self.dim = dim
-        self.window_size = window_size
-        self.num_heads = num_heads
-        head_dim = dim // num_heads
-        self.scale = head_dim ** -0.5
-        
-        self.qkv = nn.Linear(dim, dim * 3)
-        self.proj = nn.Linear(dim, dim)
-        
-    def forward(self, x):
-        B_, N, C = x.shape
-        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        q, k, v = qkv[0], qkv[1], qkv[2]
-        
-        q = q * self.scale
-        attn = (q @ k.transpose(-2, -1))
-        attn = F.softmax(attn, dim=-1)
-        
-        x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
-        x = self.proj(x)
-        return x
 
 class SwinBlock(nn.Module):
-    def __init__(self, dim, num_heads, window_size):
+    def __init__(self, c1, window_size=8):
         super().__init__()
-        self.dim = dim
-        self.num_heads = num_heads
-        self.window_size = window_size
+        # Simplification du SwinBlock pour une meilleure intégration avec YOLOv8
+        self.conv = nn.Conv2d(c1, c1, kernel_size=3, padding=1)
+        self.bn = nn.BatchNorm2d(c1)
+        self.act = nn.SiLU()
         
-        self.norm1 = nn.LayerNorm(dim)
-        self.attn = WindowAttention(dim, window_size, num_heads)
-        self.norm2 = nn.LayerNorm(dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, 4 * dim),
-            nn.GELU(),
-            nn.Linear(4 * dim, dim)
+        # Attention simple basée sur le mécanisme d'auto-attention
+        self.attention = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(c1, c1, kernel_size=1),
+            nn.Sigmoid()
         )
         
     def forward(self, x):
-        B, C, H, W = x.shape
+        shortcut = x
         
-        # Converter to token format
-        x = x.permute(0, 2, 3, 1)  # B, H, W, C
-        x_reshaped = x.view(B, H * W, C)
+        # Convolution standard
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.act(x)
         
-        # Window attention
-        shortcut = x_reshaped
-        x_reshaped = self.norm1(x_reshaped)
-        x_windows = self._partition_windows(x_reshaped, H, W)
-        x_windows = self.attn(x_windows)
-        x_reshaped = self._reverse_windows(x_windows, H, W)
-        x_reshaped = shortcut + x_reshaped
+        # Mécanisme d'attention simplifié
+        att = self.attention(x)
+        x = x * att
         
-        # MLP
-        shortcut = x_reshaped
-        x_reshaped = self.norm2(x_reshaped)
-        x_reshaped = self.mlp(x_reshaped)
-        x_reshaped = shortcut + x_reshaped
-        
-        # Convert back to feature map
-        x = x_reshaped.view(B, H, W, C)
-        x = x.permute(0, 3, 1, 2)  # B, C, H, W
-        
-        return x
-    
-    def _partition_windows(self, x, H, W):
-        B, L, C = x.shape
-        x = x.view(B, H, W, C)
-        
-        # Pad feature map to multiple of window size
-        pad_h = (self.window_size - H % self.window_size) % self.window_size
-        pad_w = (self.window_size - W % self.window_size) % self.window_size
-        if pad_h > 0 or pad_w > 0:
-            x = F.pad(x, (0, 0, 0, pad_w, 0, pad_h))
-        
-        Hp, Wp = H + pad_h, W + pad_w
-        
-        # Window partition
-        x = x.view(B, Hp // self.window_size, self.window_size, Wp // self.window_size, self.window_size, C)
-        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, self.window_size * self.window_size, C)
-        return windows
-    
-    def _reverse_windows(self, windows, H, W):
-        B = int(windows.shape[0] / ((H + self.window_size - 1) // self.window_size * (W + self.window_size - 1) // self.window_size))
-        
-        # Pad feature map to multiple of window size
-        pad_h = (self.window_size - H % self.window_size) % self.window_size
-        pad_w = (self.window_size - W % self.window_size) % self.window_size
-        Hp, Wp = H + pad_h, W + pad_w
-        
-        x = windows.view(B, Hp // self.window_size, Wp // self.window_size, self.window_size, self.window_size, -1)
-        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, Hp, Wp, -1)
-        
-        if pad_h > 0 or pad_w > 0:
-            x = x[:, :H, :W, :].contiguous()
-        
-        x = x.view(B, H * W, -1)
-        return x
+        return x + shortcut
