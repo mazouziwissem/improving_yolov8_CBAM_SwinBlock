@@ -98,7 +98,7 @@
 #   - [[16, 19, 22], 1, Detect, [nc]]              # 23
 
 
-nc: 1  # à modifier selon ton dataset
+nc: 1  # Nombre de classes, à modifier selon ton dataset
 
 scales:
   n: [0.33, 0.25, 1024]
