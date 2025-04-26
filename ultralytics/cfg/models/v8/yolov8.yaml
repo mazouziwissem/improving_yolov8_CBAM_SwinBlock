@@ -98,48 +98,59 @@
 #   - [[16, 19, 22], 1, Detect, [nc]]              # 23
 
 
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+# YOLOv8 amélioré avec modules CBAM et SwinBlock
+# Architecture optimisée pour améliorer la performance de détection
+
+# Parameters
 nc: 1  # number of classes
+scales:  # model compound scaling constants
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]  # YOLOv8n version
+  s: [0.33, 0.50, 1024]  # YOLOv8s version
+  m: [0.67, 0.75, 768]   # YOLOv8m version
+  l: [1.00, 1.00, 512]   # YOLOv8l version
+  x: [1.00, 1.25, 512]   # YOLOv8x version
 
-# Parameters unchanged
-scales:
-  n: [0.33, 0.25, 1024]
-  s: [0.33, 0.50, 1024]
-  m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
-
-# Enhanced YOLOv8 backbone with Swin Transformer blocks and CBAM attention
+# YOLOv8 backbone amélioré
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]         # 0 - P1/2
-  - [-1, 1, Conv, [128, 3, 2]]        # 1 - P2/4
-  - [-1, 1, SwinBlock, [128, 2, 4, 8]] # 2 - P2/4, Swin transformer (depth=2, heads=4, window=8)
-  - [-1, 1, Conv, [256, 3, 2]]        # 3 - P3/8
-  - [-1, 2, C2f, [256, True]]         # 4 - P3/8 (reduced repeats)
-  - [-1, 1, Conv, [512, 3, 2]]        # 5 - P4/16
-  - [-1, 1, SwinBlock, [512, 2, 8, 8]] # 6 - P4/16, Swin transformer
-  - [-1, 1, Conv, [1024, 3, 2]]       # 7 - P5/32
-  - [-1, 1, CBAM, [1024, 16]]         # 8 - Channel & spatial attention (reduction=16)
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
+  - [-1, 1, CBAM, [128]]  # 2-Attention module
+  - [-1, 3, C2f, [128, True]]  # 3
+  - [-1, 1, Conv, [256, 3, 2]]  # 4-P3/8
+  - [-1, 1, CBAM, [256]]  # 5-Attention module
+  - [-1, 3, C2f, [256, True]]  # 6
+  - [-1, 1, SwinBlock, [256, 4, 8]]  # 7-SwinBlock module
+  - [-1, 1, Conv, [512, 3, 2]]  # 8-P4/16
+  - [-1, 1, CBAM, [512]]  # 9-Attention module
+  - [-1, 3, C2f, [512, True]]  # 10
+  - [-1, 1, SwinBlock, [512, 4, 8]]  # 11-SwinBlock module
+  - [-1, 1, Conv, [1024, 3, 2]]  # 12-P5/32
+  - [-1, 1, CBAM, [1024]]  # 13-Attention module
+  - [-1, 3, C2f, [1024, True]]  # 14
+  - [-1, 1, SPPF, [1024, 5]]  # 15
 
-# Enhanced YOLOv8 head with integrated CBAM modules
+# YOLOv8 head amélioré
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 6], 1, Concat, [1]]     # cat backbone P4
-  - [-1, 1, CBAM, [512, 16]]      # attention on fused features
-  - [-1, 3, C2f, [512]]           # 12 - P4/16
-
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 4], 1, Concat, [1]]     # cat backbone P3
-  - [-1, 1, CBAM, [256, 16]]      # attention on fused features
-  - [-1, 3, C2f, [256]]           # 15 - P3/8-small
-
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 12], 1, Concat, [1]]    # cat head P4
-  - [-1, 1, CBAM, [512, 16]]      # attention
-  - [-1, 3, C2f, [512]]           # 18 - P4/16-medium
-
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 9], 1, Concat, [1]]     # cat head P5
-  - [-1, 1, CBAM, [1024, 16]]     # attention
-  - [-1, 3, C2f, [1024]]          # 21 - P5/32-large
-
-  - [[15, 18, 21], 1, Detect, [nc]] # Detect heads (P3, P4, P5)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
+  - [[-1, 11], 1, Concat, [1]]  # 17: cat backbone P4
+  - [-1, 3, C2f, [512]]  # 18
+  - [-1, 1, CBAM, [512]]  # 19-Attention module
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 20
+  - [[-1, 7], 1, Concat, [1]]  # 21: cat backbone P3
+  - [-1, 3, C2f, [256]]  # 22
+  - [-1, 1, CBAM, [256]]  # 23-Attention module (P3/8-small)
+  
+  - [-1, 1, Conv, [256, 3, 2]]  # 24
+  - [[-1, 19], 1, Concat, [1]]  # 25: cat head P4
+  - [-1, 3, C2f, [512]]  # 26
+  - [-1, 1, CBAM, [512]]  # 27-Attention module (P4/16-medium)
+  
+  - [-1, 1, Conv, [512, 3, 2]]  # 28
+  - [[-1, 15], 1, Concat, [1]]  # 29: cat head P5
+  - [-1, 3, C2f, [1024]]  # 30
+  - [-1, 1, CBAM, [1024]]  # 31-Attention module (P5/32-large)
+  
+  - [[23, 27, 31], 1, Detect, [nc]]  # 32: Detect(P3, P4, P5)
