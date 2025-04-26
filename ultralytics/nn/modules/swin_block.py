@@ -58,24 +58,40 @@
 #         return x[:, :, :H, :W]  # remove padding
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class SwinBlock(nn.Module):
-    def __init__(self, c1, window_size=8):
+    def __init__(self, c1=None, window_size=8):
         super().__init__()
-        # Simplification du SwinBlock pour une meilleure intégration avec YOLOv8
+        self.c1 = c1
+        self.window_size = window_size
+        
+        # Les couches seront créées lors du premier forward pass si c1 n'est pas spécifié
+        self.initialized = c1 is not None
+        
+        if self.initialized:
+            self._initialize_layers(c1)
+    
+    def _initialize_layers(self, c1):
+        # Version simplifiée du bloc SwinTransformer adaptée pour YOLOv8
         self.conv = nn.Conv2d(c1, c1, kernel_size=3, padding=1)
         self.bn = nn.BatchNorm2d(c1)
         self.act = nn.SiLU()
         
-        # Attention simple basée sur le mécanisme d'auto-attention
+        # Attention simplifiée
         self.attention = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(c1, c1, kernel_size=1),
             nn.Sigmoid()
         )
         
+        self.initialized = True
+        
     def forward(self, x):
+        # Si les couches ne sont pas encore initialisées, on les crée
+        if not self.initialized:
+            _, c, _, _ = x.shape
+            self._initialize_layers(c)
+        
         shortcut = x
         
         # Convolution standard

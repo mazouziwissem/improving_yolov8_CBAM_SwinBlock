@@ -3,21 +3,35 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
+    def __init__(self, in_planes=None, ratio=16):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.in_planes = in_planes
+        self.ratio = ratio
         
+        # Si in_planes est spécifié, on crée le MLP immédiatement
+        if in_planes is not None:
+            self.create_mlp(in_planes)
+        else:
+            # Sinon, le MLP sera créé au premier forward pass
+            self.shared_MLP = None
+            
+    def create_mlp(self, in_planes):
         # Assurez-vous que le ratio ne réduit pas les canaux à zéro
-        reduced_planes = max(1, in_planes // ratio)
-        
+        reduced_planes = max(1, in_planes // self.ratio)
         self.shared_MLP = nn.Sequential(
             nn.Conv2d(in_planes, reduced_planes, 1, bias=False),
             nn.ReLU(),
             nn.Conv2d(reduced_planes, in_planes, 1, bias=False)
         )
-        
+            
     def forward(self, x):
+        # Si le MLP n'a pas été créé, on le crée maintenant avec les bonnes dimensions
+        if self.shared_MLP is None:
+            _, c, _, _ = x.shape
+            self.create_mlp(c)
+            
         avg_out = self.shared_MLP(self.avg_pool(x))
         max_out = self.shared_MLP(self.max_pool(x))
         out = avg_out + max_out
@@ -39,18 +53,13 @@ class SpatialAttention(nn.Module):
         return torch.sigmoid(x)
 
 class CBAM(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels=None):
         super(CBAM, self).__init__()
-        # Ajustez le ratio en fonction du nombre de canaux pour éviter les erreurs
-        ratio = 16 if channels >= 64 else 4
-        
-        self.ca = ChannelAttention(channels, ratio)
+        # On laisse le module déterminer automatiquement le nombre de canaux
+        self.ca = ChannelAttention(channels, ratio=8 if channels and channels < 128 else 16)
         self.sa = SpatialAttention(kernel_size=7)
         
     def forward(self, x):
-        # Sauvegardez les dimensions d'entrée pour le débogage
-        b, c, h, w = x.shape
-        
         # Appliquez l'attention des canaux
         ca_output = self.ca(x)
         x = x * ca_output
