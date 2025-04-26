@@ -105,6 +105,8 @@ from .transformer import (
 
 from .swin_block import SwinBlock
 from .cbam import CBAM
+# Ajouter à la fin de ultralytics/nn/modules/__init__.py
+from .advanced_modules import ESEAttn, C2GC, CARAFE, ASPP, BiCAU, DyReLU, GSConv
 __all__ = (
     "Conv",
     "Conv2",
@@ -183,6 +185,13 @@ __all__ = (
     "Index",
     "A2C2f",
     "SwinBlock",
-    "CBAM"
+    "CBAM",
+    "ESEAttn",
+    "C2GC",
+    "CARAFE", 
+    "ASPP", 
+    "BiCAU", 
+    "DyReLU", 
+    "GSConv",
 )
 

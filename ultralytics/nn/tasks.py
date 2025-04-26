@@ -11,6 +11,17 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
+# Ajouter à la fin de ultralytics/nn/modules/__init__.py
+from ultralytics.nn.modules.advanced_modules import ESEAttn, C2GC, CARAFE, ASPP, BiCAU, DyReLU, GSConv
+
+globals()['ESEAttn'] = ESEAttn
+globals()['C2GC'] = C2GC
+globals()['CARAFE'] = CARAFE
+globals()['ASPP'] = ASPP
+globals()['BiCAU'] = BiCAU
+globals()['DyReLU'] = DyReLU
+globals()['GSConv'] = GSConv
+
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
 
