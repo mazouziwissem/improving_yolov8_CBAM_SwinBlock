@@ -59,6 +59,7 @@
 import torch
 import torch.nn as nn
 
+
 class SwinBlock(nn.Module):
     def __init__(self, dim, num_heads=4, window_size=7):
         super().__init__()
@@ -76,8 +77,7 @@ class SwinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
-        #x_ = x_.view(B, -1, C)  # flatten spatial to sequence
-        x_ = x_.view(B, H * W, self.dim)  # self.dim = 128, cohérent avec LayerNorm
+        x_ = x_.view(B, H * W, self.dim)  # [B, H*W, C] => nécessaire pour MHA
 
         shortcut = x_
         x_ = self.norm1(x_)
@@ -85,5 +85,5 @@ class SwinBlock(nn.Module):
         x_ = shortcut + attn_out
 
         x_ = x_ + self.mlp(self.norm2(x_))
-        x_ = x_.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()  # back to (B, C, H, W)
+        x_ = x_.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()  # (B, C, H, W)
         return x_
