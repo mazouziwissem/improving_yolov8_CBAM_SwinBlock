@@ -65,7 +65,10 @@ class SwinBlock(nn.Module):
         self.dim = dim
         self.window_size = window_size
 
-        self.input_proj = None  # On initialise comme None, on l'ajoute si besoin dans forward
+        # Système pour projeter au bon nombre de channels si besoin
+        self.input_proj = nn.Identity()
+        if in_channels is not None and in_channels != dim:
+            self.input_proj = nn.Conv2d(in_channels, dim, kernel_size=1)
 
         self.norm1 = nn.LayerNorm(dim)
         self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
@@ -79,11 +82,8 @@ class SwinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
 
-        # Projeter l'entrée si C != self.dim
-        if C != self.dim:
-            if self.input_proj is None:
-                self.input_proj = nn.Conv2d(C, self.dim, kernel_size=1).to(x.device)
-            x = self.input_proj(x)
+        # Toujours appliquer l'input_proj (c'est soit Identity, soit Conv2d)
+        x = self.input_proj(x)
 
         x_ = x.permute(0, 2, 3, 1).contiguous()  # (B, H, W, C)
         x_ = x_.view(B, H * W, self.dim)  # (B, H*W, dim)
