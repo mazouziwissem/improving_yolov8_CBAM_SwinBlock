@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 
 class ECBAM(nn.Module):
-    """Efficient Channel and Spatial Attention Module with 128 channels"""
+    """Efficient Channel and Spatial Attention Module with dynamic channels"""
     def __init__(self, c1, r=16):
         super().__init__()
         # Channel Attention
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
-        # Ensure c1 (input channels) is used in the network
+        # Adaptive input channels
         self.fc = nn.Sequential(
             nn.Conv2d(c1, c1 // r, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
@@ -22,6 +22,12 @@ class ECBAM(nn.Module):
         self.sigmoid_spatial = nn.Sigmoid()
 
     def forward(self, x):
+        # Ensure the number of input channels matches
+        c_in = x.shape[1]  # Get input channels dynamically
+
+        if c_in != 128:
+            print(f"Warning: ECBAM expects 128 channels, but got {c_in} channels!")
+
         # Channel Attention
         avg_out = self.fc(self.avg_pool(x))  # Average pooling along channels
         max_out = self.fc(self.max_pool(x))  # Max pooling along channels
