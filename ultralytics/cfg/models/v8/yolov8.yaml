@@ -255,6 +255,61 @@
 
 # Tumor-Detection YOLOv8n Custom Model
 # Classes
+# nc: 1  # 1 class (tumor)
+
+# # Model scaling
+# scales:
+#   n: [0.33, 0.25, 1024]  # nano
+#   s: [0.33, 0.50, 1024]  # small
+#   m: [0.67, 0.75, 768]
+#   l: [1.00, 1.00, 512]
+#   x: [1.00, 1.25, 512]
+
+# # Backbone
+# backbone:
+#   - [-1, 1, Conv, [64, 3, 2]]         # 0 - P1/2
+#   - [-1, 1, Conv, [128, 3, 2]]        # 1 - P2/4
+#   - [-1, 3, C2f, [128, True]]         # 2
+#   - [-1, 1, Conv, [256, 3, 2]]        # 3 - P3/8
+#   - [-1, 6, C2f, [256, True]]         # 4
+#   - [-1, 1, ECBAM, [256]]             # 5 - Apply ECBAM after enough feature learning (P3)
+
+#   - [-1, 1, Conv, [512, 3, 2]]        # 6 - P4/16
+#   - [-1, 6, C2f, [512, True]]         # 7
+#   - [-1, 1, SwinBlock, []]            # 8 - Transformer block after C2f
+#   - [-1, 1, ECBAM, [512]]             # 9 - After more complex features (P4)
+
+#   - [-1, 1, Conv, [768, 3, 2]]        # 10 - P5/32
+#   - [-1, 3, C2f, [768, True]]         # 11
+#   - [-1, 1, SPPF, [768, 5]]           # 12 - Final pooling layer
+
+# # Head
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+#   - [[-1, 7], 1, Concat, [1]]                  # 14
+#   - [-1, 3, C2f, [512]]                         # 15
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
+#   - [[-1, 4], 1, Concat, [1]]                  # 17
+#   - [-1, 3, C2f, [256]]                         # 18
+#   - [-1, 1, ECBAM, [256]]                       # 19 - ECBAM after aggregation at P3 head
+
+#   - [-1, 1, Conv, [256, 3, 2]]                  # 20
+#   - [[-1, 15], 1, Concat, [1]]                  # 21
+#   - [-1, 3, C2f, [512]]                         # 22
+
+#   - [-1, 1, Conv, [512, 3, 2]]                  # 23
+#   - [[-1, 11], 1, Concat, [1]]                  # 24
+#   - [-1, 3, C2f, [768]]                         # 25
+#   - [-1, 1, ECBAM, [768]]                       # 26 - Final ECBAM at P5 head
+
+#   - [[19, 22, 26], 1, Detect, [nc]]             # 27
+
+
+
+# Tumor-Detection YOLOv8n Upgraded (with >768 channels at P5)
+
+# Classes
 nc: 1  # 1 class (tumor)
 
 # Model scaling
@@ -267,21 +322,21 @@ scales:
 
 # Backbone
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]         # 0 - P1/2
-  - [-1, 1, Conv, [128, 3, 2]]        # 1 - P2/4
-  - [-1, 3, C2f, [128, True]]         # 2
-  - [-1, 1, Conv, [256, 3, 2]]        # 3 - P3/8
-  - [-1, 6, C2f, [256, True]]         # 4
-  - [-1, 1, ECBAM, [256]]             # 5 - Apply ECBAM after enough feature learning (P3)
+  - [-1, 1, Conv, [64, 3, 2]]          # 0 - P1/2
+  - [-1, 1, Conv, [128, 3, 2]]         # 1 - P2/4
+  - [-1, 3, C2f, [128, True]]          # 2
+  - [-1, 1, Conv, [256, 3, 2]]         # 3 - P3/8
+  - [-1, 6, C2f, [256, True]]          # 4
+  - [-1, 1, ECBAM, [256]]              # 5 - ECBAM attention after C2f at P3
 
-  - [-1, 1, Conv, [512, 3, 2]]        # 6 - P4/16
-  - [-1, 6, C2f, [512, True]]         # 7
-  - [-1, 1, SwinBlock, []]            # 8 - Transformer block after C2f
-  - [-1, 1, ECBAM, [512]]             # 9 - After more complex features (P4)
+  - [-1, 1, Conv, [512, 3, 2]]         # 6 - P4/16
+  - [-1, 6, C2f, [512, True]]          # 7
+  - [-1, 1, SwinBlock, []]             # 8 - Swin Transformer block at P4
+  - [-1, 1, ECBAM, [512]]              # 9 - ECBAM at P4
 
-  - [-1, 1, Conv, [768, 3, 2]]        # 10 - P5/32
-  - [-1, 3, C2f, [768, True]]         # 11
-  - [-1, 1, SPPF, [768, 5]]           # 12 - Final pooling layer
+  - [-1, 1, Conv, [1024, 3, 2]]         # 10 - P5/32 (CHANGED from 768 to 1024)
+  - [-1, 3, C2f, [1024, True]]          # 11
+  - [-1, 1, SPPF, [1024, 5]]            # 12 - SPPF layer (adjusted channels)
 
 # Head
 head:
@@ -292,7 +347,7 @@ head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
   - [[-1, 4], 1, Concat, [1]]                  # 17
   - [-1, 3, C2f, [256]]                         # 18
-  - [-1, 1, ECBAM, [256]]                       # 19 - ECBAM after aggregation at P3 head
+  - [-1, 1, ECBAM, [256]]                       # 19
 
   - [-1, 1, Conv, [256, 3, 2]]                  # 20
   - [[-1, 15], 1, Concat, [1]]                  # 21
@@ -300,8 +355,7 @@ head:
 
   - [-1, 1, Conv, [512, 3, 2]]                  # 23
   - [[-1, 11], 1, Concat, [1]]                  # 24
-  - [-1, 3, C2f, [768]]                         # 25
-  - [-1, 1, ECBAM, [768]]                       # 26 - Final ECBAM at P5 head
+  - [-1, 3, C2f, [1024]]                        # 25  # Updated to 1024 channels
+  - [-1, 1, ECBAM, [1024]]                      # 26  # ECBAM at 1024
 
   - [[19, 22, 26], 1, Detect, [nc]]             # 27
-
