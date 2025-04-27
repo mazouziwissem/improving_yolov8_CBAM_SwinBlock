@@ -253,7 +253,14 @@
 
 
 
-# YOLOv8 backbone with strategic attention modules
+nc: 1  # number of classes
+scales:  # model compound scaling constants
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]  # YOLOv8n version
+  s: [0.33, 0.50, 1024]  # YOLOv8s version
+  m: [0.67, 0.75, 768]   # YOLOv8m version
+  l: [1.00, 1.00, 512]   # YOLOv8l version
+  x: [1.00, 1.25, 512]   # YOLOv8x version
 # YOLOv8 backbone with strategic attention modules
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
