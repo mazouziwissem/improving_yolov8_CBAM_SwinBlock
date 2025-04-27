@@ -105,7 +105,7 @@ from .transformer import (
 
 from .swin_block import SwinBlock
 from .cbam import CBAM
-from .nov_modules import BoTBlock
+from .sam import SAM
 __all__ = (
     "Conv",
     "Conv2",
@@ -185,8 +185,7 @@ __all__ = (
     "A2C2f",
     "SwinBlock",
     "CBAM",
-  
-    "BoTBlock",
+    "SAM",
     
 
 )

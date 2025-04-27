@@ -11,9 +11,9 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
-from ultralytics.nn.modules.nov_modules import BoTBlock
+from ultralytics.nn.modules.sam import SAM
 
-globals()['BoTBlock'] = BoTBlock
+globals()['SAM'] = SAM
 
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM

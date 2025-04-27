@@ -253,111 +253,44 @@
 
 
 
-# Number of classes
-# nc: 1
-
-# # Scale factors
-# scales:
-#   n: [0.33, 0.25, 1024]
-#   s: [0.33, 0.50, 1024]
-#   m: [0.67, 0.75, 768]
-#   l: [1.00, 1.00, 512]
-#   x: [1.00, 1.25, 512]
-
-# # Backbone
-# backbone:
-#   # [from, repeats, module, args]
-#   - [-1, 1, Conv, [64, 3, 2]]    # 0: P1/2
-#   - [-1, 1, Conv, [128, 3, 2]]   # 1: P2/4
-#   - [-1, 3, C3K2, [128]]         # 2: C3K2 instead of C2f
-#   - [-1, 1, Conv, [256, 3, 2]]   # 3: P3/8
-#   - [-1, 6, C3K2, [256]]         # 4: C3K2
-#   - [-1, 1, Conv, [512, 3, 2]]   # 5: P4/16
-#   - [-1, 6, C2f, [512, True]]    # 6: Keep standard C2f (good for medium context)
-#   - [-1, 1, Conv, [1024, 3, 2]]  # 7: P5/32
-#   - [-1, 3, C2f, [1024, True]]   # 8: Keep standard
-#   - [-1, 1, SPPF, [1024, 5]]     # 9
-
-# # Head
-# head:
-#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 10: up P5->P4
-#   - [[-1, 6], 1, Concat, [1]]                   # 11
-#   - [-1, 3, C3K2, [512]]                        # 12: C3K2
-
-#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 13: up P4->P3
-#   - [[-1, 4], 1, Concat, [1]]                   # 14
-#   - [-1, 3, C3K2, [256]]                        # 15: C3K2
-
-#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16: up P3->P2
-#   - [[-1, 2], 1, Concat, [1]]                   # 17
-#   - [-1, 3, C3K2, [128]]                        # 18: C3K2
-
-#   - [-1, 1, Conv, [128, 3, 2]]                   # 19: down P2->P3
-#   - [[-1, 15], 1, Concat, [1]]                   # 20
-#   - [-1, 3, C3K2, [256]]                        # 21: C3K2
-
-#   - [-1, 1, Conv, [256, 3, 2]]                   # 22: down P3->P4
-#   - [[-1, 12], 1, Concat, [1]]                   # 23
-#   - [-1, 3, C2f, [512]]                         # 24: standard C2f
-
-#   - [-1, 1, Conv, [512, 3, 2]]                   # 25: down P4->P5
-#   - [[-1, 9], 1, Concat, [1]]                    # 26
-#   - [-1, 3, C2f, [1024]]                        # 27: standard C2f
-
-#   # Detect
-#   - [[18, 21, 24, 27], 1, Detect, [nc]]          # Detect heads P2/P3/P4/P5
-
-# Ultralytics YOLO 🚀 - Simplified architecture for tumor detection
-# Parameters
-# # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-# # Modèle BGF-YOLOv8 amélioré pour petits objets
-
-# # Paramètres
-# # Ultralytics 🚀 AGPL-3.0 License
-# # Modèle BGF-YOLOv8 corrigé
-
-# # Paramètres
-# custom_yolov8_botnet.yaml
-
-# Parameters
-nc: 1 # number of classes
-scales:
-  n: [0.33, 0.25, 1024]
-  s: [0.33, 0.50, 1024]
-  m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
-
-# YOLOv8+BoTNet backbone
+# YOLOv8 backbone with strategic attention modules
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]        # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]       # 1-P2/4
-  - [-1, 3, C2f, [128, True]]        # 2
-  - [-1, 1, Conv, [256, 3, 2]]       # 3-P3/8
-  - [-1, 6, C2f, [256, True]]        # 4
-  - [-1, 1, Conv, [512, 3, 2]]       # 5-P4/16
-  - [-1, 3, BoTBlock, [128, 512]]         # 6 <-- Inject BoTBlock here (replacing C2f partially)
-  - [-1, 1, Conv, [1024, 3, 2]]      # 7-P5/32
-  - [-1, 2, BoTBlock, [1024, 1024]]        # 8 <-- Another BoTBlock
-  - [-1, 1, SPPF, [1024, 5]]         # 9
+  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
+  - [-1, 3, C2f, [128, True]]  # 2
+  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
+  - [-1, 6, C2f, [256, True]]  # 4
+  - [-1, 1, CBAM, []]  # 5-CBAM strategic placement for P3 features
+  - [-1, 1, SAM, []]  # 6-SAM strategic attention for better spatial feature learning
+  - [-1, 1, Conv, [512, 3, 2]]  # 7-P4/16
+  - [-1, 6, C2f, [512, True]]  # 8
+  - [-1, 1, SwinBlock, []]  # 9-SwinBlock for P4 features (better for medium resolution)
+  - [-1, 1, Conv, [1024, 3, 2]]  # 10-P5/32
+  - [-1, 3, C2f, [1024, True]]  # 11
+  - [-1, 1, CBAM, []]  # 12-CBAM strategic placement for P5 features
+  - [-1, 1, SAM, []]  # 13-SAM strategic attention for improved spatial reasoning
+  - [-1, 1, SPPF, [1024, 5]]  # 14
 
-# YOLOv8 head (same)
+# YOLOv8 head with selective attention
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 6], 1, Concat, [1]]        # cat backbone P4
-  - [-1, 3, C2f, [512]]              # 12
-
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 4], 1, Concat, [1]]        # cat backbone P3
-  - [-1, 3, C2f, [256]]              # 15 (P3/8-small)
-
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 12], 1, Concat, [1]]       # cat head P4
-  - [-1, 3, C2f, [512]]              # 18 (P4/16-medium)
-
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 9], 1, Concat, [1]]        # cat head P5
-  - [-1, 3, C2f, [1024]]             # 21 (P5/32-large)
-
-  - [[15, 18, 21], 1, Detect, [nc]]  # Detect(P3, P4, P5)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 15
+  - [[-1, 8], 1, Concat, [1]]  # 16: cat backbone P4
+  - [-1, 3, C2f, [512]]  # 17
+  
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 18
+  - [[-1, 5], 1, Concat, [1]]  # 19: cat backbone P3
+  - [-1, 3, C2f, [256]]  # 20
+  - [-1, 1, CBAM, []]  # 21-CBAM only at P3/8-small output
+  - [-1, 1, SAM, []]  # 22-SAM to boost spatial attention for small-scale features
+  
+  - [-1, 1, Conv, [256, 3, 2]]  # 23
+  - [[-1, 15], 1, Concat, [1]]  # 24: cat head P4
+  - [-1, 3, C2f, [512]]  # 25
+  - [-1, 1, SwinBlock, []]  # 26-SwinBlock at P4/16-medium output
+  
+  - [-1, 1, Conv, [512, 3, 2]]  # 27
+  - [[-1, 11], 1, Concat, [1]]  # 28: cat backbone P5
+  - [-1, 3, C2f, [1024]]  # 29
+  
+  - [[21, 26, 29], 1, Detect, [nc]]  # 30: Detect(P3, P4, P5)
