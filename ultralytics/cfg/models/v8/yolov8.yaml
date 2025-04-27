@@ -316,39 +316,29 @@ scales:  # model compound scaling constants
   x: [1.00, 1.25, 512]   # YOLOv8x version
 
 # Optimized YOLOv8 backbone with strategic attention modules
-backbone:
-  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]  # 2
-  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
-  - [-1, 6, C2f, [256, True]]  # 4
-  - [-1, 1, CBAM, []]  # 5-CBAM strategic placement for P3 features
-  - [-1, 1, Conv, [512, 3, 2]]  # 6-P4/16
-  - [-1, 6, C2f, [512, True]]  # 7
-  - [-1, 1, RepC3K2, [512, 1024]]  # RepC3K2 added at this layer
-  - [-1, 1, Conv, [1024, 3, 2]]  # 9-P5/32
-  - [-1, 3, C2f, [1024, True]]  # 10
-  - [-1, 1, CBAM, []]  # 11-CBAM strategic placement for P5 features
-  - [-1, 1, SPPF, [1024, 5]]  # 12
 
-# YOLOv8 head with selective attention
+backbone:
+  # P1 - Initial input layer
+  - [-1, 1, Conv, [64, 3, 2]]  # Conv layer with 64 channels, 3x3 kernel, stride 2
+  # P2 - Downsampling to 1/4 resolution
+  - [-1, 1, Conv, [128, 3, 2]]  # Conv layer with 128 channels, 3x3 kernel, stride 2
+  - [-1, 3, C2f, [128, True]]  # C2f block with 128 channels, with identity skip connections
+  # P3 - Downsampling to 1/8 resolution
+  - [-1, 1, Conv, [256, 3, 2]]  # Conv layer with 256 channels, 3x3 kernel, stride 2
+  - [-1, 6, C2f, [256, True]]  # C2f block with 256 channels, with identity skip connections
+  # P4 - Downsampling to 1/16 resolution
+  - [-1, 1, Conv, [512, 3, 2]]  # Conv layer with 512 channels, 3x3 kernel, stride 2
+  - [-1, 6, C2f, [512, True]]  # C2f block with 512 channels, with identity skip connections
+  # P5 - Downsampling to 1/32 resolution
+  - [-1, 1, Conv, [1024, 3, 2]]  # Conv layer with 1024 channels, 3x3 kernel, stride 2
+  - [-1, 6, C2f, [1024, True]]  # C2f block with 1024 channels, with identity skip connections
+  # Optional: CBAM or other feature attention mechanisms
+  - [-1, 1, CBAM, []]  # CBAM block for attention mechanism
+
+# YOLOv8 Head Configuration
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
-  - [[-1, 8], 1, Concat, [1]]  # 14: cat backbone P4
-  - [-1, 3, C2f, [512]]  # 15
-  
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
-  - [[-1, 5], 1, Concat, [1]]  # 17: cat backbone P3
-  - [-1, 3, C2f, [256]]  # 18
-  - [-1, 1, CBAM, []]  # 19-CBAM only at P3/8-small output
-  
-  - [-1, 1, Conv, [256, 3, 2]]  # 20
-  - [[-1, 15], 1, Concat, [1]]  # 21: cat head P4
-  - [-1, 3, C2f, [512]]  # 22
-  - [-1, 1, RepC3K2, [512, 1024]]  # RepC3K2 in head
-  
-  - [-1, 1, Conv, [512, 3, 2]]  # 24
-  - [[-1, 11], 1, Concat, [1]]  # 25: cat backbone P5
-  - [-1, 3, C2f, [1024]]  # 26
-  
-  - [[19, 23, 26], 1, Detect, [nc]]  # 27: Detect(P3, P4, P5)
+  # Use the custom RepC3K2 block to adjust channels as needed
+  - [-1, 1, RepC3K2, [512, 1024]]  # Apply RepC3K2 with 512 input channels, 1024 output channels
+  # Additional head layers for classification or detection tasks
+  - [-1, 1, Conv, [256, 3, 2]]  # Another convolutional block (optional)
+  - [-1, 1, Conv, [nc, 1, 1]]  # Final output layer, where `nc` is the number of classes

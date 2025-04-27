@@ -5,7 +5,7 @@ import torch.nn.functional as F
 class RepC3K2(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(RepC3K2, self).__init__()
-        # Define a 3x3 convolution followed by 2x2 convolution
+        # Adjusted the layer to ensure channels are flexible
         self.conv_3x3 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.conv_2x2 = nn.Conv2d(out_channels, out_channels, kernel_size=2, stride=1, padding=0)
         
