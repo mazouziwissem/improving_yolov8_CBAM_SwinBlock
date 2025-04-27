@@ -307,42 +307,37 @@
 #   # Detect
 #   - [[18, 21, 24, 27], 1, Detect, [nc]]          # Detect heads P2/P3/P4/P5
 
-# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-# YOLOv8 modified architecture with Multi-Context Feature Distillation (MCFD) for tumor detection
+# Ultralytics YOLO 🚀 - Simplified architecture for tumor detection
 # Parameters
-nc: 1  # number of classes (1 for tumor detection)
+nc: 1  # number of classes (1 for tumor)
 scales:
   # [depth, width, max_channels]
-  n: [0.33, 0.25, 1024]  # YOLOv8n-MCFD
-  s: [0.33, 0.50, 1024]  # YOLOv8s-MCFD
-  m: [0.67, 0.75, 768]   # YOLOv8m-MCFD
-  l: [1.00, 1.00, 512]   # YOLOv8l-MCFD
-  x: [1.00, 1.25, 512]   # YOLOv8x-MCFD
+  n: [0.33, 0.25, 1024]  # YOLOv8n scale
 
-# YOLOv8 backbone with MCFD modules - simplified to prevent channel issues
+# YOLOv8 backbone with MCFD modules
 backbone:
   # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
   - [-1, 3, C2f, [128, True]]  # 2
   - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
-  - [-1, 6, C2f, [256, True]]  # 4
-  - [-1, 1, MCFD, [256, 256]]  # 5-Added MCFD module for tumor features
+  - [-1, 1, MCFD, [256, 256]]  # 4-MCFD module
+  - [-1, 6, C2f, [256, True]]  # 5
   - [-1, 1, Conv, [512, 3, 2]]  # 6-P4/16
-  - [-1, 6, C2f, [512, True]]  # 7
-  - [-1, 1, MCFD, [512, 512]]  # 8-Added MCFD module
+  - [-1, 1, MCFD, [512, 512]]  # 7-MCFD module
+  - [-1, 6, C2f, [512, True]]  # 8
   - [-1, 1, Conv, [1024, 3, 2]]  # 9-P5/32
-  - [-1, 3, C2f, [1024, True]]  # 10
-  - [-1, 1, MCFD, [1024, 1024]]  # 11-Added MCFD module
+  - [-1, 1, MCFD, [1024, 1024]]  # 10-MCFD module
+  - [-1, 3, C2f, [1024, True]]  # 11
   - [-1, 1, SPPF, [1024, 5]]  # 12
 
-# YOLOv8 head
+# YOLOv8 head - using standard structure
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
   - [[-1, 8], 1, Concat, [1]]  # 14: cat backbone P4
   - [-1, 3, C2f, [512]]  # 15
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
-  - [[-1, 4], 1, Concat, [1]]  # 17: cat backbone P3
+  - [[-1, 5], 1, Concat, [1]]  # 17: cat backbone P3
   - [-1, 3, C2f, [256]]  # 18 (P3/8-small)
   - [-1, 1, Conv, [256, 3, 2]]  # 19
   - [[-1, 15], 1, Concat, [1]]  # 20: cat head P4
