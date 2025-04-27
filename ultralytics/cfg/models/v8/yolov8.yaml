@@ -255,6 +255,16 @@
 
 # Tumor-Detection YOLOv8n Custom Model
 # Classes
+nc: 1  # 1 class (tumor)
+
+# Model scaling
+scales:
+  n: [0.33, 0.25, 1024]  # nano
+  s: [0.33, 0.50, 1024]  # small
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
+
 # Backbone with ECBAM attention (modified for correct channel flows)
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]        # 0-P1/2 (Output: 64 channels)
