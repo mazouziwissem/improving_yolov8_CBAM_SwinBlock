@@ -32,7 +32,8 @@ class BoTBlock(nn.Module):
     """ BoTNet Block: Bottleneck + MHSA """
     def __init__(self, c1, c2, stride=1, heads=4):
         super().__init__()
-        self.conv1 = nn.Conv2d(c1, c2 // 4, kernel_size=1, bias=False)  # Reducing channels here
+        # Modify the number of input channels
+        self.conv1 = nn.Conv2d(c1, c2 // 4, kernel_size=1, bias=False)  # Use the correct number of input channels
         self.bn1 = nn.BatchNorm2d(c2 // 4)
 
         self.mhsa = MHSA(c2 // 4, num_heads=heads) if stride == 1 else nn.Conv2d(c2 // 4, c2 // 4, 3, stride, 1)
@@ -50,7 +51,6 @@ class BoTBlock(nn.Module):
         self.act = nn.SiLU()
 
     def forward(self, x):
-        print(f'Input to BoTBlock: {x.shape}')  # Debug the input shape
         identity = x
 
         out = self.act(self.bn1(self.conv1(x)))
@@ -63,6 +63,4 @@ class BoTBlock(nn.Module):
         out += identity
         out = self.act(out)
 
-        print(f'Output from BoTBlock: {out.shape}')  # Debug the output shape
         return out
-
