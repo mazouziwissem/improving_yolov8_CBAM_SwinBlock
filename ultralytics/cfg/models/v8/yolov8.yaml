@@ -253,54 +253,53 @@
 
 
 
-nc: 1  # number of classes
+# Tumor-Detection YOLOv8n Custom Model
+# Classes
+nc: 1  # 1 class (tumor)
 
-scales:  # model compound scaling constants
-  # [depth, width, max_channels]
-  n: [0.33, 0.25, 1024]  # YOLOv8n version
-  s: [0.33, 0.50, 1024]  # YOLOv8s version
-  m: [0.67, 0.75, 768]   # YOLOv8m version
-  l: [1.00, 1.00, 512]   # YOLOv8l version
-  x: [1.00, 1.25, 512]   # YOLOv8x version
+# Model scaling
+scales:
+  n: [0.33, 0.25, 1024]  # nano
+  s: [0.33, 0.50, 1024]  # small
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
 
-# YOLOv8 backbone with attention modules
+# Backbone with ECBAM attention
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]    # 0 - P1/2
-  - [-1, 1, Conv, [128, 3, 2]]   # 1 - P2/4
-  - [-1, 3, C2f, [128, True]]    # 2
-  - [-1, 1, Conv, [256, 3, 2]]   # 3 - P3/8
-  - [-1, 6, C2f, [256, True]]    # 4
-  - [-1, 1, CBAM, [256]]         # 5 - CBAM at P3
-  - [-1, 1, SAM, [256]]          # 6 - SAM at P3
-  - [-1, 1, Conv, [512, 3, 2]]   # 7 - P4/16
-  - [-1, 6, C2f, [512, True]]    # 8
-  - [-1, 1, SwinBlock, []]       # 9 - Swin Transformer at P4
-  - [-1, 1, Conv, [1024, 3, 2]]  # 10 - P5/32
-  - [-1, 3, C2f, [1024, True]]   # 11
-  - [-1, 1, CBAM, [1024]]        # 12 - CBAM at P5
-  - [-1, 1, SAM, [1024]]         # 13 - SAM at P5
-  - [-1, 1, SPPF, [1024, 5]]     # 14 - SPPF block
+  - [-1, 1, Conv, [64, 3, 2]]        # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]       # 1-P2/4
+  - [-1, 3, C2f, [128, True]]        # 2
+  - [-1, 1, Conv, [256, 3, 2]]       # 3-P3/8
+  - [-1, 6, C2f, [256, True]]        # 4
+  - [-1, 1, ECBAM, [256]]            # 5: ECBAM attention at P3
+  - [-1, 1, Conv, [512, 3, 2]]       # 6-P4/16
+  - [-1, 6, C2f, [512, True]]        # 7
+  - [-1, 1, SwinBlock, []]           # 8: Swin Transformer Block at P4
+  - [-1, 1, Conv, [1024, 3, 2]]      # 9-P5/32
+  - [-1, 3, C2f, [1024, True]]       # 10
+  - [-1, 1, ECBAM, [1024]]           # 11: ECBAM attention at P5
+  - [-1, 1, SPPF, [1024, 5]]         # 12: Spatial Pyramid Pooling Fast (SPPF)
 
-# YOLOv8 head with selective attention
+# Head with smart attention
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 15 - upsample
-  - [[-1, 8], 1, Concat, [1]]                  # 16 - concat P4
-  - [-1, 3, C2f, [512]]                         # 17
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+  - [[-1, 7], 1, Concat, [1]]                  # 14
+  - [-1, 3, C2f, [512]]                         # 15
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 18 - upsample
-  - [[-1, 5], 1, Concat, [1]]                  # 19 - concat P3
-  - [-1, 3, C2f, [256]]                         # 20
-  - [-1, 1, CBAM, [256]]                        # 21 - CBAM at P3 head
-  - [-1, 1, SAM, [256]]                         # 22 - SAM at P3 head
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
+  - [[-1, 4], 1, Concat, [1]]                  # 17
+  - [-1, 3, C2f, [256]]                         # 18
+  - [-1, 1, ECBAM, [256]]                       # 19: ECBAM at P3 head (small object boost)
 
-  - [-1, 1, Conv, [256, 3, 2]]                  # 23 - downsample
-  - [[-1, 15], 1, Concat, [1]]                  # 24 - concat head P4
-  - [-1, 3, C2f, [512]]                         # 25
-  - [-1, 1, SwinBlock, []]                      # 26 - SwinBlock at P4 head
+  - [-1, 1, Conv, [256, 3, 2]]                  # 20
+  - [[-1, 15], 1, Concat, [1]]                  # 21
+  - [-1, 3, C2f, [512]]                         # 22
+  - [-1, 1, SwinBlock, []]                      # 23: SwinBlock at P4
 
-  - [-1, 1, Conv, [512, 3, 2]]                  # 27 - downsample
-  - [[-1, 11], 1, Concat, [1]]                  # 28 - concat P5
-  - [-1, 3, C2f, [1024]]                        # 29
-  - [-1, 1, SAM, [1024]]                        # 30 - SAM at P5 head
+  - [-1, 1, Conv, [512, 3, 2]]                  # 24
+  - [[-1, 10], 1, Concat, [1]]                  # 25
+  - [-1, 3, C2f, [1024]]                        # 26
+  - [-1, 1, ECBAM, [1024]]                      # 27: ECBAM at P5 head
 
-  - [[21, 26, 29], 1, Detect, [nc]]             # 31 - Final detection (small, medium, large)
+  - [[19, 23, 27], 1, Detect, [nc]]              # 28: Final detection layers

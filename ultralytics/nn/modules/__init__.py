@@ -106,6 +106,7 @@ from .transformer import (
 from .swin_block import SwinBlock
 from .cbam import CBAM
 from .sam import SAM
+from .ecbam import ECBAM
 __all__ = (
     "Conv",
     "Conv2",
@@ -186,6 +187,7 @@ __all__ = (
     "SwinBlock",
     "CBAM",
     "SAM",
+    "ECBAM",
     
 
 )
