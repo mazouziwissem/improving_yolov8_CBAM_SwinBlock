@@ -11,11 +11,11 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
-from ultralytics.nn.modules.repc3k2 import RepC3K2
+from ultralytics.nn.modules.mcfd import MCFD
 
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
-globals()['RepC3K2'] = RepC3K2
+globals()['MCFD'] = MCFD
 
 
 from ultralytics.nn.autobackend import check_class_names

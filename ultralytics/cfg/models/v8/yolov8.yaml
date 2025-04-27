@@ -307,38 +307,61 @@
 #   # Detect
 #   - [[18, 21, 24, 27], 1, Detect, [nc]]          # Detect heads P2/P3/P4/P5
 
-nc: 1  # number of classes
-scales:  # model compound scaling constants
-  n: [0.33, 0.25, 1024]  # YOLOv8n version
-  s: [0.33, 0.50, 1024]  # YOLOv8s version
-  m: [0.67, 0.75, 768]   # YOLOv8m version
-  l: [1.00, 1.00, 512]   # YOLOv8l version
-  x: [1.00, 1.25, 512]   # YOLOv8x version
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+# YOLOv8 modified architecture with Multi-Context Feature Distillation (MCFD) for tumor detection
+# Parameters
+nc: 1  # number of classes (1 for tumor detection)
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]  # YOLOv8n-MCFD
+  s: [0.33, 0.50, 1024]  # YOLOv8s-MCFD
+  m: [0.67, 0.75, 768]   # YOLOv8m-MCFD
+  l: [1.00, 1.00, 512]   # YOLOv8l-MCFD
+  x: [1.00, 1.25, 512]   # YOLOv8x-MCFD
 
-# Optimized YOLOv8 backbone with strategic attention modules
-
+# YOLOv8 backbone with MCFD modules
 backbone:
-  # P1 - Initial input layer
-  - [-1, 1, Conv, [64, 3, 2]]  # Conv layer with 64 channels, 3x3 kernel, stride 2
-  # P2 - Downsampling to 1/4 resolution
-  - [-1, 1, Conv, [128, 3, 2]]  # Conv layer with 128 channels, 3x3 kernel, stride 2
-  - [-1, 3, C2f, [128, True]]  # C2f block with 128 channels, with identity skip connections
-  # P3 - Downsampling to 1/8 resolution
-  - [-1, 1, Conv, [256, 3, 2]]  # Conv layer with 256 channels, 3x3 kernel, stride 2
-  - [-1, 6, C2f, [256, True]]  # C2f block with 256 channels, with identity skip connections
-  # P4 - Downsampling to 1/16 resolution
-  - [-1, 1, Conv, [512, 3, 2]]  # Conv layer with 512 channels, 3x3 kernel, stride 2
-  - [-1, 6, C2f, [512, True]]  # C2f block with 512 channels, with identity skip connections
-  # P5 - Downsampling to 1/32 resolution
-  - [-1, 1, Conv, [1024, 3, 2]]  # Conv layer with 1024 channels, 3x3 kernel, stride 2
-  - [-1, 6, C2f, [1024, True]]  # C2f block with 1024 channels, with identity skip connections
-  # Optional: CBAM or other feature attention mechanisms
-  - [-1, 1, CBAM, []]  # CBAM block for attention mechanism
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
+  - [-1, 3, C2f, [128, True]]  # 2
+  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
+  - [-1, 1, MCFD, [256, 256]]  # 4-Added MCFD module for tumor features
+  - [-1, 6, C2f, [256, True]]  # 5
+  - [-1, 1, Conv, [512, 3, 2]]  # 6-P4/16
+  - [-1, 1, MCFD, [512, 512]]  # 7-Added MCFD module
+  - [-1, 6, C2f, [512, True]]  # 8
+  - [-1, 1, Conv, [1024, 3, 2]]  # 9-P5/32
+  - [-1, 1, MCFD, [1024, 1024]]  # 10-Added MCFD module
+  - [-1, 3, C2f, [1024, True]]  # 11
+  - [-1, 1, SPPF, [1024, 5]]  # 12
 
-# YOLOv8 Head Configuration
+# Enhanced YOLOv8 head with cross-scale feature aggregation
 head:
-  # Use the custom RepC3K2 block to adjust channels as needed
-  - [-1, 1, RepC3K2, [512, 1024]]  # Apply RepC3K2 with 512 input channels, 1024 output channels
-  # Additional head layers for classification or detection tasks
-  - [-1, 1, Conv, [256, 3, 2]]  # Another convolutional block (optional)
-  - [-1, 1, Conv, [nc, 1, 1]]  # Final output layer, where `nc` is the number of classes
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+  - [[-1, 8], 1, Concat, [1]]  # 14: cat backbone P4
+  - [-1, 3, C2f, [512]]  # 15
+  - [-1, 1, MCFD, [512, 512]]  # 16: Added MCFD for refined feature extraction
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 17
+  - [[-1, 5], 1, Concat, [1]]  # 18: cat backbone P3
+  - [-1, 3, C2f, [256]]  # 19 (P3/8-small)
+  - [-1, 1, MCFD, [256, 256]]  # 20: Added MCFD for small tumor detection
+  
+  # Upsampled P3 for higher resolution features (improves small tumor detection)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 21
+  - [[-1, 2], 1, Concat, [1]]  # 22: cat with P2 features
+  - [-1, 3, C2f, [128]]  # 23: P2 processing (very small tumors)
+  - [-1, 1, Conv, [128, 3, 2]]  # 24: route back to P3 resolution
+  - [[-1, 20], 1, Concat, [1]]  # 25: concat with P3 features
+  
+  # Standard P3->P4->P5 path with MCFD enhancements
+  - [-1, 3, C2f, [256]]  # 26: refined P3 features
+  - [-1, 1, Conv, [256, 3, 2]]  # 27: down to P4
+  - [[-1, 16], 1, Concat, [1]]  # 28: cat with P4 features
+  - [-1, 3, C2f, [512]]  # 29 (P4/16-medium)
+  - [-1, 1, Conv, [512, 3, 2]]  # 30: down to P5
+  - [[-1, 12], 1, Concat, [1]]  # 31: cat with backbone P5
+  - [-1, 3, C2f, [1024]]  # 32 (P5/32-large)
+
+  # Multi-scale detection with 4 feature levels (P2-P5)
+  - [[23, 26, 29, 32], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)
