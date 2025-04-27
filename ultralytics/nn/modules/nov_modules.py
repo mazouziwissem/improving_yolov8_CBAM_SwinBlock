@@ -30,15 +30,14 @@ class MHSA(nn.Module):
 
 
 class BoTBlock(nn.Module):
-    """ BoTNet Block: Bottleneck + MHSA """
     def __init__(self, c1, c2, stride=1, heads=4):
         super().__init__()
-        self.conv1 = nn.Conv2d(c1, c2 // 4, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(c2 // 4)
+        self.conv1 = nn.Conv2d(c1, c2, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(c2)
 
-        self.mhsa = MHSA(c2 // 4, num_heads=heads) if stride == 1 else nn.Conv2d(c2 // 4, c2 // 4, 3, stride, 1)
+        self.mhsa = MHSA(c2, num_heads=heads) if stride == 1 else nn.Conv2d(c2, c2, 3, stride, 1)
 
-        self.conv2 = nn.Conv2d(c2 // 4, c2, kernel_size=1, bias=False)
+        self.conv2 = nn.Conv2d(c2, c2, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(c2)
 
         self.downsample = None
