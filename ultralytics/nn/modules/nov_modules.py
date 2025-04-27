@@ -50,6 +50,7 @@ class BoTBlock(nn.Module):
         self.act = nn.SiLU()
 
     def forward(self, x):
+        print(f"BoTBlock input shape: {x.shape}")  # DEBUG LIN
         identity = x
 
         out = self.act(self.bn1(self.conv1(x)))
