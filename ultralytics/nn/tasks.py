@@ -11,11 +11,15 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
-from ultralytics.nn.modules.mcfd import MCFD
-
+from ultralytics.nn.modules.nov_modules import GhostConv, BoTBlock, PatchExpand, C2f_Faster, SPPF_Ghost
+globals()['GhostConv'] = GhostConv
+globals()['BoTBlock'] = BoTBlock
+globals()['PatchExpand'] = PatchExpand
+globals()['C2f_Faster'] = C2f_Faster
+globals()['SPPF_Ghost'] = SPPF_Ghost
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
-globals()['MCFD'] = MCFD
+
 
 
 from ultralytics.nn.autobackend import check_class_names

@@ -105,8 +105,7 @@ from .transformer import (
 
 from .swin_block import SwinBlock
 from .cbam import CBAM
-
-from .mcfd import MCFD
+from .nov_modules import GhostConv, BoTBlock, PatchExpand, C2f_Faster, SPPF_Ghost
 __all__ = (
     "Conv",
     "Conv2",
@@ -186,7 +185,11 @@ __all__ = (
     "A2C2f",
     "SwinBlock",
     "CBAM",
-    "MCFD",
+    "GhostConv",
+    "BoTBlock",
+    "PatchExpand",
+    "C2f_Faster",
+    "SPPF_Ghost",
 
 )
 
