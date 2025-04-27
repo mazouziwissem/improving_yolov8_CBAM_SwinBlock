@@ -3,23 +3,41 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class GhostConv(nn.Module):
-    def __init__(self, c1, c2, k=1, s=1, g=1, ratio=2):
+    def __init__(self, c1, c2, k=1, s=1, ratio=2):
         super().__init__()
         c_ = max(c2 // ratio, 1)
-        g = min(g, c1)  # Groups ne peut pas dépasser c1
-        
         self.conv = nn.Sequential(
-            nn.Conv2d(c1, c_, k, s, k//2, groups=1 if g > c1 else g, bias=False),  # Forcer groups=1 si nécessaire
+            nn.Conv2d(c1, c_, k, s, k//2, bias=False),
             nn.BatchNorm2d(c_),
             nn.SiLU(),
-            nn.Conv2d(c_, c_, 5, 1, 2, groups=max(c_ // 4, 1), bias=False),  # Groupes adaptatifs
+            nn.Conv2d(c_, c_, 5, 1, 2, groups=c_, bias=False),
             nn.BatchNorm2d(c_),
             nn.SiLU(),
         )
-        self.shortcut = nn.Conv2d(c1, c2, 1, 1, 0) if c1 != c2 else nn.Identity()
-        
+        self.shortcut = nn.Sequential(
+            nn.Conv2d(c1, c2, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c2)
+        ) if c1 != c2 else nn.Identity()
+
     def forward(self, x):
         return torch.cat([self.conv(x), self.shortcut(x)], 1)
+
+class C2f_Faster(nn.Module):
+    def __init__(self, c1, c2, n=1, shortcut=False, e=0.5):
+        super().__init__()
+        c_ = max(int(c2 * e), 4)
+        self.cv1 = GhostConv(c1, c_, 1)
+        self.cv2 = GhostConv((2 + n) * c_, c2, 1)
+        self.m = nn.ModuleList(
+            nn.Sequential(
+                GhostConv(c_, c_, 3),
+                nn.BatchNorm2d(c_)
+            ) for _ in range(n))
+        
+    def forward(self, x):
+        y = list(self.cv1(x).chunk(2 + len(self.m), 1))
+        y.extend(m(y[-1]) for m in self.m)
+        return self.cv2(torch.cat(y, 1))
 
 class BoTBlock(nn.Module):
     def __init__(self, c1, c2, num_heads=4, expansion=4):
@@ -55,20 +73,6 @@ class PatchExpand(nn.Module):
         x = F.pixel_shuffle(x, 2)  # (B, C, 2H, 2W)
         return self.norm(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
 
-class C2f_Faster(nn.Module):
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
-        super().__init__()
-        c_ = max(int(c2 * e), 4)  # Minimum 4 canaux
-        self.cv1 = GhostConv(c1, c_, 1, 1)
-        self.cv2 = GhostConv((2 + n) * c_, c2, 1)
-        
-        # Ajustement dynamique des groupes
-        self.m = nn.ModuleList(
-            nn.Sequential(
-                nn.Conv2d(c_, c_, 3, 1, 1, groups=max(c_ // 4, 1)),  # Groupes réduits
-                nn.BatchNorm2d(c_),
-                nn.SiLU()
-            ) for _ in range(n))
         
     def forward(self, x):
         y = list(self.cv1(x).split((self.cv1.out_channels // (2 + len(self.m)),)* (2 + len(self.m))))
