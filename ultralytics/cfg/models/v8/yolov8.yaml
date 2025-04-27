@@ -254,43 +254,44 @@
 
 
 # YOLOv8 backbone with strategic attention modules
+# YOLOv8 backbone with strategic attention modules
 backbone:
-  # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
   - [-1, 3, C2f, [128, True]]  # 2
   - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
   - [-1, 6, C2f, [256, True]]  # 4
   - [-1, 1, CBAM, []]  # 5-CBAM strategic placement for P3 features
-  - [-1, 1, SAM, []]  # 6-SAM strategic attention for better spatial feature learning
+  - [-1, 1, SAM, [256]]  # 6-SAM with in_channels=256 for better spatial attention at P3
   - [-1, 1, Conv, [512, 3, 2]]  # 7-P4/16
   - [-1, 6, C2f, [512, True]]  # 8
   - [-1, 1, SwinBlock, []]  # 9-SwinBlock for P4 features (better for medium resolution)
   - [-1, 1, Conv, [1024, 3, 2]]  # 10-P5/32
   - [-1, 3, C2f, [1024, True]]  # 11
   - [-1, 1, CBAM, []]  # 12-CBAM strategic placement for P5 features
-  - [-1, 1, SAM, []]  # 13-SAM strategic attention for improved spatial reasoning
+  - [-1, 1, SAM, [1024]]  # 13-SAM with in_channels=1024 for better spatial attention at P5
   - [-1, 1, SPPF, [1024, 5]]  # 14
 
-# YOLOv8 head with selective attention
+# YOLOv8 head avec attention sélective
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 15
-  - [[-1, 8], 1, Concat, [1]]  # 16: cat backbone P4
+  - [[-1, 8], 1, Concat, [1]]  # 16: concat backbone P4
   - [-1, 3, C2f, [512]]  # 17
   
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 18
-  - [[-1, 5], 1, Concat, [1]]  # 19: cat backbone P3
+  - [[-1, 5], 1, Concat, [1]]  # 19: concat backbone P3
   - [-1, 3, C2f, [256]]  # 20
-  - [-1, 1, CBAM, []]  # 21-CBAM only at P3/8-small output
-  - [-1, 1, SAM, []]  # 22-SAM to boost spatial attention for small-scale features
+  - [-1, 1, CBAM, []]  # 21-CBAM uniquement à P3/8 - sortie petite échelle
+  - [-1, 1, SAM, [256]]  # 22-SAM à P3/8 avec in_channels=256 pour meilleure attention spatiale
   
   - [-1, 1, Conv, [256, 3, 2]]  # 23
-  - [[-1, 15], 1, Concat, [1]]  # 24: cat head P4
+  - [[-1, 15], 1, Concat, [1]]  # 24: concat head P4
   - [-1, 3, C2f, [512]]  # 25
-  - [-1, 1, SwinBlock, []]  # 26-SwinBlock at P4/16-medium output
+  - [-1, 1, SwinBlock, []]  # 26-SwinBlock à P4/16 - sortie moyenne échelle
   
   - [-1, 1, Conv, [512, 3, 2]]  # 27
-  - [[-1, 11], 1, Concat, [1]]  # 28: cat backbone P5
+  - [[-1, 11], 1, Concat, [1]]  # 28: concat backbone P5
   - [-1, 3, C2f, [1024]]  # 29
+  - [-1, 1, SAM, [1024]]  # 30-SAM à P5/32 avec in_channels=1024 pour meilleure attention spatiale
   
-  - [[21, 26, 29], 1, Detect, [nc]]  # 30: Detect(P3, P4, P5)
+  - [[21, 26, 29], 1, Detect, [nc]]  # 31: Détection (P3, P4, P5)
