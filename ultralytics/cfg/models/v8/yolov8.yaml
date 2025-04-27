@@ -254,6 +254,7 @@
 
 
 nc: 1  # number of classes
+
 scales:  # model compound scaling constants
   # [depth, width, max_channels]
   n: [0.33, 0.25, 1024]  # YOLOv8n version
@@ -261,44 +262,45 @@ scales:  # model compound scaling constants
   m: [0.67, 0.75, 768]   # YOLOv8m version
   l: [1.00, 1.00, 512]   # YOLOv8l version
   x: [1.00, 1.25, 512]   # YOLOv8x version
-# YOLOv8 backbone with strategic attention modules
-backbone:
-  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]  # 2
-  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
-  - [-1, 6, C2f, [256, True]]  # 4
-  - [-1, 1, CBAM, []]  # 5-CBAM strategic placement for P3 features
-  - [-1, 1, SAM, [256]]  # 6-SAM with in_channels=256 for better spatial attention at P3
-  - [-1, 1, Conv, [512, 3, 2]]  # 7-P4/16
-  - [-1, 6, C2f, [512, True]]  # 8
-  - [-1, 1, SwinBlock, []]  # 9-SwinBlock for P4 features (better for medium resolution)
-  - [-1, 1, Conv, [1024, 3, 2]]  # 10-P5/32
-  - [-1, 3, C2f, [1024, True]]  # 11
-  - [-1, 1, CBAM, []]  # 12-CBAM strategic placement for P5 features
-  - [-1, 1, SAM, [1024]]  # 13-SAM with in_channels=1024 for better spatial attention at P5
-  - [-1, 1, SPPF, [1024, 5]]  # 14
 
-# YOLOv8 head avec attention sélective
+# YOLOv8 backbone with attention modules
+backbone:
+  - [-1, 1, Conv, [64, 3, 2]]    # 0 - P1/2
+  - [-1, 1, Conv, [128, 3, 2]]   # 1 - P2/4
+  - [-1, 3, C2f, [128, True]]    # 2
+  - [-1, 1, Conv, [256, 3, 2]]   # 3 - P3/8
+  - [-1, 6, C2f, [256, True]]    # 4
+  - [-1, 1, CBAM, [256]]         # 5 - CBAM at P3
+  - [-1, 1, SAM, [256]]          # 6 - SAM at P3
+  - [-1, 1, Conv, [512, 3, 2]]   # 7 - P4/16
+  - [-1, 6, C2f, [512, True]]    # 8
+  - [-1, 1, SwinBlock, []]       # 9 - Swin Transformer at P4
+  - [-1, 1, Conv, [1024, 3, 2]]  # 10 - P5/32
+  - [-1, 3, C2f, [1024, True]]   # 11
+  - [-1, 1, CBAM, [1024]]        # 12 - CBAM at P5
+  - [-1, 1, SAM, [1024]]         # 13 - SAM at P5
+  - [-1, 1, SPPF, [1024, 5]]     # 14 - SPPF block
+
+# YOLOv8 head with selective attention
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 15
-  - [[-1, 8], 1, Concat, [1]]  # 16: concat backbone P4
-  - [-1, 3, C2f, [512]]  # 17
-  
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 18
-  - [[-1, 5], 1, Concat, [1]]  # 19: concat backbone P3
-  - [-1, 3, C2f, [256]]  # 20
-  - [-1, 1, CBAM, []]  # 21-CBAM uniquement à P3/8 - sortie petite échelle
-  - [-1, 1, SAM, [256]]  # 22-SAM à P3/8 avec in_channels=256 pour meilleure attention spatiale
-  
-  - [-1, 1, Conv, [256, 3, 2]]  # 23
-  - [[-1, 15], 1, Concat, [1]]  # 24: concat head P4
-  - [-1, 3, C2f, [512]]  # 25
-  - [-1, 1, SwinBlock, []]  # 26-SwinBlock à P4/16 - sortie moyenne échelle
-  
-  - [-1, 1, Conv, [512, 3, 2]]  # 27
-  - [[-1, 11], 1, Concat, [1]]  # 28: concat backbone P5
-  - [-1, 3, C2f, [1024]]  # 29
-  - [-1, 1, SAM, [1024]]  # 30-SAM à P5/32 avec in_channels=1024 pour meilleure attention spatiale
-  
-  - [[21, 26, 29], 1, Detect, [nc]]  # 31: Détection (P3, P4, P5)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 15 - upsample
+  - [[-1, 8], 1, Concat, [1]]                  # 16 - concat P4
+  - [-1, 3, C2f, [512]]                         # 17
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 18 - upsample
+  - [[-1, 5], 1, Concat, [1]]                  # 19 - concat P3
+  - [-1, 3, C2f, [256]]                         # 20
+  - [-1, 1, CBAM, [256]]                        # 21 - CBAM at P3 head
+  - [-1, 1, SAM, [256]]                         # 22 - SAM at P3 head
+
+  - [-1, 1, Conv, [256, 3, 2]]                  # 23 - downsample
+  - [[-1, 15], 1, Concat, [1]]                  # 24 - concat head P4
+  - [-1, 3, C2f, [512]]                         # 25
+  - [-1, 1, SwinBlock, []]                      # 26 - SwinBlock at P4 head
+
+  - [-1, 1, Conv, [512, 3, 2]]                  # 27 - downsample
+  - [[-1, 11], 1, Concat, [1]]                  # 28 - concat P5
+  - [-1, 3, C2f, [1024]]                        # 29
+  - [-1, 1, SAM, [1024]]                        # 30 - SAM at P5 head
+
+  - [[21, 26, 29], 1, Detect, [nc]]             # 31 - Final detection (small, medium, large)
