@@ -28,29 +28,29 @@ class MCFD(nn.Module):
             )
         ])
         
-        # Tissue density-aware attention
+        # Dynamic input channel handling for density gate
         self.density_gate = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            Conv(c1, c1 // 8, k=1),
+            Conv(c1, max(c1 // 16, 8), k=1),  # Ensure minimum channel count
             nn.SiLU(),
-            Conv(c1 // 8, 4, k=1),
+            Conv(max(c1 // 16, 8), 4, k=1),
             nn.Sigmoid()
         )
         
         # Feature distillation pathway
         self.distill_path = nn.Sequential(
             Conv(c1, self.mid_c, k=1),
-            nn.Dropout(0.2),  # Regularization for better generalization
+            nn.Dropout(0.1),  # Reduced dropout for stability
             Conv(self.mid_c, self.mid_c, k=3, p=1, g=self.mid_c),  # Depthwise
             Conv(self.mid_c, c2, k=1)  # Pointwise projection
         )
         
-        # Refined channel attention for emphasizing tumor-specific features
+        # Refined channel attention - fixed input channels calculation
         self.channel_refine = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            Conv(c1 + self.mid_c, self.mid_c, k=1),
+            Conv(self.mid_c, max(self.mid_c // 4, 8), k=1),
             nn.SiLU(),
-            Conv(self.mid_c, c2, k=1),
+            Conv(max(self.mid_c // 4, 8), c2, k=1),
             nn.Sigmoid()
         )
         
@@ -70,8 +70,8 @@ class MCFD(nn.Module):
         # Distill features through specialized pathway
         distilled = self.distill_path(x)
         
-        # Apply refined channel attention
-        channel_weights = self.channel_refine(torch.cat([context_combined, x], dim=1))
+        # Apply refined channel attention (fixed to prevent channel mismatch)
+        channel_weights = self.channel_refine(context_combined)
         
         # Apply weighted feature fusion
         output = distilled * channel_weights
