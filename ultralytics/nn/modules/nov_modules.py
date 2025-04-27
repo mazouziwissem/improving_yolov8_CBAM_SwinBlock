@@ -5,12 +5,12 @@ from torch.nn import functional as F
 class GhostConv(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, g=1, ratio=2):
         super().__init__()
-        c_ = c2 // ratio
+        c_ = max(c2 // ratio, 1)  # Garantit au moins 1 canal
         self.conv = nn.Sequential(
             nn.Conv2d(c1, c_, k, s, k//2, groups=g, bias=False),
             nn.BatchNorm2d(c_),
             nn.SiLU(),
-            nn.Conv2d(c_, c_, 5, 1, 2, groups=c_, bias=False),  # Depthwise
+            nn.Conv2d(c_, c_, 5, 1, 2, groups=max(c_, 1), bias=False),  # Groups >=1
             nn.BatchNorm2d(c_),
             nn.SiLU(),
         )
@@ -56,12 +56,12 @@ class PatchExpand(nn.Module):
 class C2f_Faster(nn.Module):
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__()
-        c_ = int(c2 * e)
+        c_ = max(int(c2 * e), 1)  # Canal minimal = 1
         self.cv1 = GhostConv(c1, c_, 1, 1)
         self.cv2 = GhostConv((2 + n) * c_, c2, 1)
         self.m = nn.ModuleList(
             nn.Sequential(
-                nn.Conv2d(c_, c_, 1, groups=min(c_, 32)),  # Partial Conv
+                nn.Conv2d(c_, c_, 1, groups=max(c_, 1)),  # Groups dynamique
                 nn.BatchNorm2d(c_),
                 nn.SiLU()
             ) for _ in range(n))
