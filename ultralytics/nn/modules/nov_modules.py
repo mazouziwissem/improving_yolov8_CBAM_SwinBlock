@@ -27,8 +27,6 @@ class MHSA(nn.Module):
 
         out = out.permute(0, 2, 1).reshape(B, C, H, W)
         return out
-
-
 class BoTBlock(nn.Module):
     """ BoTNet Block: Bottleneck + MHSA """
     def __init__(self, c1, c2, stride=1, heads=4):
