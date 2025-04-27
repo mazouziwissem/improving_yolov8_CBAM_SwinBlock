@@ -251,45 +251,58 @@
   
 #   - [[16, 19, 23], 1, Detect, [nc]]  # 24: Detect(P3, P4, P5)
 
-# Ultralytics YOLO config (YOLOv8)
-# Medical Object Detection Customization
 
-# Model backbone/neck/head with medical optimizations
-nc: 1 # Number of classes (e.g., tumors, fractures)
-scales: # Model scaling (small, medium, large)
-  # [depth, width, max_channels]
-  n: [0.33, 0.25, 1024]  # YOLOv8n version
-  s: [0.33, 0.50, 1024]  # YOLOv8s version
-  m: [0.67, 0.75, 768]   # YOLOv8m version
-  l: [1.00, 1.00, 512]   # YOLOv8l version
-  x: [1.00, 1.25, 512]   # YOLOv8x version
 
+# Number of classes
+nc: 1
+
+# Scale factors
+scales:
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
+
+# Backbone
 backbone:
-  # Medical-optimized backbone with deformable convolutions
-  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]
-  - [-1, 1, MSDA, [256, 3, 2]]  # Multi-Scale Dilated Attention (P3/8)
-  - [-1, 6, C2f, [256, True]]
-  - [-1, 1, MSDA, [512, 3, 2]]  # Multi-Scale Dilated Attention (P4/16)
-  - [-1, 6, C2f, [512, True]]
-  - [-1, 1, MSDA, [1024, 3, 2]]  # Multi-Scale Dilated Attention (P5/32)
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, SPPF, [1024, 5]]  # Spatial Pyramid Pooling
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]    # 0: P1/2
+  - [-1, 1, Conv, [128, 3, 2]]   # 1: P2/4
+  - [-1, 3, C3K2, [128]]         # 2: C3K2 instead of C2f
+  - [-1, 1, Conv, [256, 3, 2]]   # 3: P3/8
+  - [-1, 6, C3K2, [256]]         # 4: C3K2
+  - [-1, 1, Conv, [512, 3, 2]]   # 5: P4/16
+  - [-1, 6, C2f, [512, True]]    # 6: Keep standard C2f (good for medium context)
+  - [-1, 1, Conv, [1024, 3, 2]]  # 7: P5/32
+  - [-1, 3, C2f, [1024, True]]   # 8: Keep standard
+  - [-1, 1, SPPF, [1024, 5]]     # 9
 
-neck:
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 6], 1, Concat, [1]]  # Add P4
-  - [-1, 3, C2f, [512]]  # 12
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 4], 1, Concat, [1]]  # Add P3
-  - [-1, 3, C2f, [256]]  # 15 (P3/8)
-  - [-1, 1, MSDA, [256, 3, 2]]  # Add attention for small objects
-  - [[-1, 12], 1, Concat, [1]]  # Merge P4
-  - [-1, 3, C2f, [512]]  # 18 (P4/16)
-  - [[-1, 9], 1, Concat, [1]]  # Merge P5
-  - [-1, 3, C2f, [1024]]  # 21 (P5/32)
-
+# Head
 head:
-  - [-1, 1, nn.Identity,[]]  # Dummy layer for ONNX compatibility
-  - [[15, 18, 21], 1, Detect, [nc]]  # Detect(P3, P4, P5)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 10: up P5->P4
+  - [[-1, 6], 1, Concat, [1]]                   # 11
+  - [-1, 3, C3K2, [512]]                        # 12: C3K2
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 13: up P4->P3
+  - [[-1, 4], 1, Concat, [1]]                   # 14
+  - [-1, 3, C3K2, [256]]                        # 15: C3K2
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 16: up P3->P2
+  - [[-1, 2], 1, Concat, [1]]                   # 17
+  - [-1, 3, C3K2, [128]]                        # 18: C3K2
+
+  - [-1, 1, Conv, [128, 3, 2]]                   # 19: down P2->P3
+  - [[-1, 15], 1, Concat, [1]]                   # 20
+  - [-1, 3, C3K2, [256]]                        # 21: C3K2
+
+  - [-1, 1, Conv, [256, 3, 2]]                   # 22: down P3->P4
+  - [[-1, 12], 1, Concat, [1]]                   # 23
+  - [-1, 3, C2f, [512]]                         # 24: standard C2f
+
+  - [-1, 1, Conv, [512, 3, 2]]                   # 25: down P4->P5
+  - [[-1, 9], 1, Concat, [1]]                    # 26
+  - [-1, 3, C2f, [1024]]                        # 27: standard C2f
+
+  # Detect
+  - [[18, 21, 24, 27], 1, Detect, [nc]]          # Detect heads P2/P3/P4/P5
