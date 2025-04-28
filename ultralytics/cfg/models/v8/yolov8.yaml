@@ -311,38 +311,49 @@
 # Parameters
 # 
 
-nc: 1
+# Parameters
+nc: 1  # number of classes
 scales:
-  m: [0.67, 0.75, 768]
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]  # nano
+  m: [0.67, 0.75, 768]   # Recommend using at least m size for larger dataset
 
+# Optimized backbone
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]
-  - [-1, 1, Conv, [128, 3, 2]]
-  - [-1, 6, C2f, [128, True]]
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [-1, 9, C2f, [256, True]]
-  - [-1, 1, CBAM, []]
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [-1, 6, C2f, [512, True]]
-  - [-1, 2, SwinBlock, []]
-  - [-1, 1, Conv, [1024, 3, 2]]
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, CBAM, []]
-  - [-1, 1, SPPF, [1024, 5]]
+  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
+  - [-1, 3, C2f, [128, True]]  # 2
+  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
+  - [-1, 6, C2f, [256, True]]  # 4
+  - [-1, 1, CBAM, []]  # 5-CBAM for P3 features
+  - [-1, 1, Conv, [512, 3, 2]]  # 6-P4/16
+  - [-1, 6, C2f, [512, True]]  # 7
+  - [-1, 1, SwinBlock, []]  # 8-SwinBlock for P4
+  - [-1, 1, Conv, [1024, 3, 2]]  # 9-P5/32
+  - [-1, 3, C2f, [1024, True]]  # 10
+  - [-1, 1, SPPF, [1024, 5]]  # 11-Replace CBAM with SPPF here
+  - [-1, 1, CBAM, []]  # 12-CBAM after SPPF
 
+# Enhanced head with better feature integration
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 8], 1, Concat, [1]]
-  - [-1, 3, C2f, [512]]
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 5], 1, Concat, [1]]
-  - [-1, 3, C2f, [256]]
-  - [-1, 2, CBAM, []]
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 15], 1, Concat, [1]]
-  - [-1, 3, C2f, [512]]
-  - [-1, 1, SwinBlock, []]
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 11], 1, Concat, [1]]
-  - [-1, 3, C2f, [1024]]
-  - [[19, 23, 26], 1, Detect, [nc]]
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+  - [[-1, 8], 1, Concat, [1]]  # 14: cat backbone P4
+  - [-1, 3, C2f, [512]]  # 15
+  - [-1, 1, C2f, [512]]  # 16: Extra C2f for better feature processing
+  
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 17
+  - [[-1, 5], 1, Concat, [1]]  # 18: cat backbone P3
+  - [-1, 3, C2f, [256]]  # 19
+  - [-1, 1, SwinBlock, []]  # 20: SwinBlock for small objects
+  
+  - [-1, 1, Conv, [256, 3, 2]]  # 21
+  - [[-1, 16], 1, Concat, [1]]  # 22: cat head P4
+  - [-1, 3, C2f, [512]]  # 23
+  - [-1, 1, CBAM, []]  # 24: CBAM for medium objects
+  
+  - [-1, 1, Conv, [512, 3, 2]]  # 25
+  - [[-1, 12], 1, Concat, [1]]  # 26: cat backbone P5
+  - [-1, 3, C2f, [1024]]  # 27
+  - [-1, 1, SwinBlock, []]  # 28: SwinBlock for large objects
+  
+  - [[20, 24, 28], 1, Detect, [nc]]  # 29: Detect(P3, P4, P5)
