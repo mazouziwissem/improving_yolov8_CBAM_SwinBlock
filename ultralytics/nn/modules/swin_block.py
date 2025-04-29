@@ -150,36 +150,60 @@ class SwinBlock(nn.Module):
         self.window_size = window_size
         self.shift_size = shift_size
 
+    # def forward(self, x):
+    #     """
+    #     Forward pass of the Swin Transformer Block.
+        
+    #     Args:
+    #     - x (Tensor): Input tensor with shape [batch_size, seq_len, c1]
+        
+    #     Returns:
+    #     - out (Tensor): Output tensor after applying Swin Transformer Block
+    #     """
+    #     # Input x shape [batch_size, seq_len, c1]
+    #     residual = x
+        
+    #     # Apply the first layer normalization (for attention)
+    #     x = self.norm1(x)
+        
+    #     # Attention mechanism - compute self-attention
+    #     attn_output, _ = self.attn(x, x, x)
+        
+    #     # Add the residual connection
+    #     x = residual + attn_output
+        
+    #     # Apply second normalization (for Feed Forward)
+    #     residual = x
+    #     x = self.norm2(x)
+        
+    #     # Feed Forward Network (Position-wise)
+    #     x = self.ffn(x)
+        
+    #     # Add the residual connection
+    #     out = residual + x
+        
+    #     return out
+
     def forward(self, x):
-        """
-        Forward pass of the Swin Transformer Block.
-        
-        Args:
-        - x (Tensor): Input tensor with shape [batch_size, seq_len, c1]
-        
-        Returns:
-        - out (Tensor): Output tensor after applying Swin Transformer Block
-        """
-        # Input x shape [batch_size, seq_len, c1]
-        residual = x
-        
-        # Apply the first layer normalization (for attention)
-        x = self.norm1(x)
-        
-        # Attention mechanism - compute self-attention
-        attn_output, _ = self.attn(x, x, x)
-        
-        # Add the residual connection
-        x = residual + attn_output
-        
-        # Apply second normalization (for Feed Forward)
-        residual = x
-        x = self.norm2(x)
-        
-        # Feed Forward Network (Position-wise)
-        x = self.ffn(x)
-        
-        # Add the residual connection
-        out = residual + x
-        
+        B, C, H, W = x.shape
+
+        # Flatten spatial dimensions and permute to shape (B, N, C)
+        x_flat = x.view(B, C, -1).permute(0, 2, 1)  # [B, N, C]
+
+        # LayerNorm and Multi-head Attention
+        residual = x_flat
+        x_norm = self.norm1(x_flat)
+        attn_output, _ = self.attn(x_norm, x_norm, x_norm)
+        x_attn = residual + attn_output
+
+        # Feed-forward
+        residual = x_attn
+        x_norm = self.norm2(x_attn)
+        x_ffn = self.ffn(x_norm)
+        out = residual + x_ffn
+
+        # Reshape back to [B, C, H, W]
+        out = out.permute(0, 2, 1).view(B, C, H, W)
+
         return out
+
