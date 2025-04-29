@@ -59,48 +59,63 @@
 import torch
 import torch.nn as nn
 
-class SwinBlock(nn.Module):
-    def __init__(self, c1=None, window_size=8):
-        super().__init__()
-        self.c1 = c1
-        self.window_size = window_size
+# class SwinBlock(nn.Module):
+#     def __init__(self, c1=None, window_size=8):
+#         super().__init__()
+#         self.c1 = c1
+#         self.window_size = window_size
         
-        # Les couches seront créées lors du premier forward pass si c1 n'est pas spécifié
-        self.initialized = c1 is not None
+#         # Les couches seront créées lors du premier forward pass si c1 n'est pas spécifié
+#         self.initialized = c1 is not None
         
-        if self.initialized:
-            self._initialize_layers(c1)
+#         if self.initialized:
+#             self._initialize_layers(c1)
     
-    def _initialize_layers(self, c1):
-        # Version simplifiée du bloc SwinTransformer adaptée pour YOLOv8
-        self.conv = nn.Conv2d(c1, c1, kernel_size=3, padding=1)
-        self.bn = nn.BatchNorm2d(c1)
-        self.act = nn.SiLU()
+#     def _initialize_layers(self, c1):
+#         # Version simplifiée du bloc SwinTransformer adaptée pour YOLOv8
+#         self.conv = nn.Conv2d(c1, c1, kernel_size=3, padding=1)
+#         self.bn = nn.BatchNorm2d(c1)
+#         self.act = nn.SiLU()
         
-        # Attention simplifiée
-        self.attention = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(c1, c1, kernel_size=1),
-            nn.Sigmoid()
+#         # Attention simplifiée
+#         self.attention = nn.Sequential(
+#             nn.AdaptiveAvgPool2d(1),
+#             nn.Conv2d(c1, c1, kernel_size=1),
+#             nn.Sigmoid()
+#         )
+        
+#         self.initialized = True
+        
+#     def forward(self, x):
+#         # Si les couches ne sont pas encore initialisées, on les crée
+#         if not self.initialized:
+#             _, c, _, _ = x.shape
+#             self._initialize_layers(c)
+        
+#         shortcut = x
+        
+#         # Convolution standard
+#         x = self.conv(x)
+#         x = self.bn(x)
+#         x = self.act(x)
+        
+#         # Mécanisme d'attention simplifié
+#         att = self.attention(x)
+#         x = x * att
+        
+#         return x + shortcut
+
+
+
+class SwinBlock(nn.Module):
+    def __init__(self, in_channels):
+        super(SwinBlock, self).__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, padding=1),
+            nn.LayerNorm([in_channels, 1, 1]),
+            nn.ReLU(),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1)
         )
-        
-        self.initialized = True
-        
+
     def forward(self, x):
-        # Si les couches ne sont pas encore initialisées, on les crée
-        if not self.initialized:
-            _, c, _, _ = x.shape
-            self._initialize_layers(c)
-        
-        shortcut = x
-        
-        # Convolution standard
-        x = self.conv(x)
-        x = self.bn(x)
-        x = self.act(x)
-        
-        # Mécanisme d'attention simplifié
-        att = self.attention(x)
-        x = x * att
-        
-        return x + shortcut
+        return x + self.block(x)
