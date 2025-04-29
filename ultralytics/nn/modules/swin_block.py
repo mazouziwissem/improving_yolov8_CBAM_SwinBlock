@@ -1,86 +1,61 @@
-# ultralytics/nn/modules/swin_block.py
-import torch
-import torch.nn as nn
-from einops import rearrange
-import torch.nn.functional as F
+# # ultralytics/nn/modules/swin_block.py
+# import torch
+# import torch.nn as nn
+# from einops import rearrange
+# import torch.nn.functional as F
 
 
-def window_partition(x, window_size):
-    # x: [B, H, W, C]
-    B, H, W, C = x.shape
-    x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).reshape(-1, window_size * window_size, C)
-    return windows  # shape: [num_windows*B, window_size*window_size, C]
+# def window_partition(x, window_size):
+#     # x: [B, H, W, C]
+#     B, H, W, C = x.shape
+#     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
+#     windows = x.permute(0, 1, 3, 2, 4, 5).reshape(-1, window_size * window_size, C)
+#     return windows  # shape: [num_windows*B, window_size*window_size, C]
 
-def window_reverse(windows, window_size, H, W):
-    # windows: [num_windows*B, window_size*window_size, C]
-    B = int(windows.shape[0] / (H * W / window_size / window_size))
-    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
-    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B, H, W, -1)
-    return x  # shape: [B, H, W, C]
+# def window_reverse(windows, window_size, H, W):
+#     # windows: [num_windows*B, window_size*window_size, C]
+#     B = int(windows.shape[0] / (H * W / window_size / window_size))
+#     x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+#     x = x.permute(0, 1, 3, 2, 4, 5).reshape(B, H, W, -1)
+#     return x  # shape: [B, H, W, C]
 
 
-class SwinBlock(nn.Module):
-    def __init__(self, dim, num_heads=2, window_size=7):
-        super().__init__()
-        self.dim = dim
-        self.window_size = window_size
-        self.norm1 = nn.LayerNorm(dim)
-        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
-        self.norm2 = nn.LayerNorm(dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, dim * 4),
-            nn.GELU(),
-            nn.Linear(dim * 4, dim)
-        )
+# class SwinBlock(nn.Module):
+#     def __init__(self, dim, num_heads=2, window_size=7):
+#         super().__init__()
+#         self.dim = dim
+#         self.window_size = window_size
+#         self.norm1 = nn.LayerNorm(dim)
+#         self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
+#         self.norm2 = nn.LayerNorm(dim)
+#         self.mlp = nn.Sequential(
+#             nn.Linear(dim, dim * 4),
+#             nn.GELU(),
+#             nn.Linear(dim * 4, dim)
+#         )
 
-    def forward(self, x):
-        B, C, H, W = x.shape
+#     def forward(self, x):
+#         B, C, H, W = x.shape
 
-        # Ajouter l'impression des dimensions à ce stade
-        print(f"Input shape (before padding and rearrange): {x.shape}")
+#         # padding if not divisible by window_size
+#         pad_h = (self.window_size - H % self.window_size) % self.window_size
+#         pad_w = (self.window_size - W % self.window_size) % self.window_size
+#         x = F.pad(x, (0, pad_w, 0, pad_h))  # pad last two dims
 
-        # padding if not divisible by window_size
-        pad_h = (self.window_size - H % self.window_size) % self.window_size
-        pad_w = (self.window_size - W % self.window_size) % self.window_size
-        x = F.pad(x, (0, pad_w, 0, pad_h))  # pad last two dims
+#         Hp, Wp = x.shape[2], x.shape[3]
 
-        Hp, Wp = x.shape[2], x.shape[3]
+#         x = rearrange(x, 'b c h w -> b h w c')
+#         x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
 
-        x = rearrange(x, 'b c h w -> b h w c')
+#         x_windows = self.norm1(x_windows)
+#         attn_windows, _ = self.attn(x_windows, x_windows, x_windows)  # [num_windows*B, ws*ws, C]
+#         x_windows = x_windows + attn_windows
+#         x_windows = x_windows + self.mlp(self.norm2(x_windows))
 
-        # Impression après le rearrange
-        print(f"Shape after rearrange: {x.shape}")
+#         x = window_reverse(x_windows, self.window_size, Hp, Wp)  # [B, H', W', C]
+#         x = rearrange(x, 'b h w c -> b c h w')
 
-        x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
-
-        # Impression après partition de fenêtres
-        print(f"Shape after window_partition: {x_windows.shape}")
-
-        x_windows = self.norm1(x_windows)
-
-        # Impression après normalisation
-        print(f"Shape after norm1: {x_windows.shape}")
-
-        attn_windows, _ = self.attn(x_windows, x_windows, x_windows)  # [num_windows*B, ws*ws, C]
-        x_windows = x_windows + attn_windows
-
-        # Impression après attention
-        print(f"Shape after attention: {x_windows.shape}")
-
-        x_windows = x_windows + self.mlp(self.norm2(x_windows))
-
-        # Impression après mlp
-        print(f"Shape after mlp: {x_windows.shape}")
-
-        x = window_reverse(x_windows, self.window_size, Hp, Wp)  # [B, H', W', C]
-        x = rearrange(x, 'b h w c -> b c h w')
-
-        # Impression avant de retourner
-        print(f"Shape before returning (after reverse): {x.shape}")
-
-        return x[:, :, :H, :W]  # remove padding
-
+#         return x[:, :, :H, :W]  # remove padding
 # import torch
 # import torch.nn as nn
 
@@ -241,3 +216,45 @@ class SwinBlock(nn.Module):
 
 #         return out
 
+# ==============================================
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class SwinBlock(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+        self.norm1 = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=4, batch_first=True)
+        self.norm2 = nn.LayerNorm(dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, dim * 4),
+            nn.GELU(),
+            nn.Linear(dim * 4, dim),
+        )
+
+    def forward(self, x):
+        """
+        x: Tensor [B, C, H, W]
+        """
+        B, C, H, W = x.shape
+
+        # Réorganise en [B, H*W, C] pour le transformer
+        x = x.permute(0, 2, 3, 1).reshape(B, H * W, C)
+
+        # Normalisation + attention
+        x_res = x
+        x = self.norm1(x)
+        attn_output, _ = self.attn(x, x, x)
+        x = x_res + attn_output
+
+        # MLP
+        x_res = x
+        x = self.norm2(x)
+        x = x_res + self.mlp(x)
+
+        # Revenir au format [B, C, H, W]
+        x = x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+        return x
