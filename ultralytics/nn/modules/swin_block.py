@@ -227,7 +227,7 @@ class SwinBlock(nn.Module):
         super().__init__()
         self.dim = dim
         self.norm1 = nn.LayerNorm(dim)
-        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=4, batch_first=True)
+        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
             nn.Linear(dim, dim * 4),
