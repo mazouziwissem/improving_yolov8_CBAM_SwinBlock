@@ -474,30 +474,30 @@ backbone:
   - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4
   - [-1, 1, SwinBlock, [32]]           # 2-Swin
-  - [-1, 3, C2f, [128, True]]          # 3
+  - [-1, 8, C2f, [128, True]]          # 3 (Remplacement par 8)
   - [-1, 1, Conv, [256, 3, 2]]         # 4-P3/8
-  - [-1, 3, C2f, [256, True]]          # 5 - réduit
+  - [-1, 8, C2f, [256, True]]          # 5 - réduit (Remplacement par 8)
   - [-1, 1, Conv, [512, 3, 2]]         # 6-P4/16
-  - [-1, 4, C2f, [512, True]]          # 7 - réduit
+  - [-1, 8, C2f, [512, True]]          # 7 - réduit (Remplacement par 8)
   - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
-  - [-1, 3, C2f, [1024, True]]         # 9
+  - [-1, 8, C2f, [1024, True]]         # 9 (Remplacement par 8)
   - [-1, 1, SPPF, [1024, 5]]           # 10-Similar to original YOLOv8
 
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 7], 1, Concat, [1]]
-  - [-1, 2, C2f, [512]]             # réduit
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # Upsampling 1st layer
+  - [[-1, 7], 1, Concat, [1]]  # Concatenate with layer 7 (8th layer in backbone)
+  - [-1, 2, C2f, [512]]  # Reduce dimensions
+  
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # Upsampling 2nd layer
+  - [[-1, 5], 1, Concat, [1]]  # Concatenate with layer 5 (8th layer in backbone)
+  - [-1, 2, C2f, [256]]  # Reduce dimensions
+  
+  - [-1, 1, Conv, [256, 3, 2]]  # Convolution layer
+  - [[-1, 13], 1, Concat, [1]]  # Concatenate with layer 13 (upscaled layer)
+  - [-1, 2, C2f, [512]]  # Reduce dimensions
+  
+  - [-1, 1, Conv, [512, 3, 2]]  # Convolution layer
+  - [[-1, 10], 1, Concat, [1]]  # Concatenate with layer 10 (upscaled layer)
+  - [-1, 2, C2f, [1024]]  # Reduce dimensions
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 5], 1, Concat, [1]]
-  - [-1, 2, C2f, [256]]             # réduit
-
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 13], 1, Concat, [1]]
-  - [-1, 2, C2f, [512]]             # réduit
-
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 10], 1, Concat, [1]]
-  - [-1, 2, C2f, [1024]]
-
-  - [[16, 19, 22], 1, Detect, [nc]]
+  - [[16, 19, 22], 1, Detect, [nc]]  # Detect layer (final output)
