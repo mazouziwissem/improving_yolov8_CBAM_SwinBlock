@@ -223,7 +223,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SwinBlock(nn.Module):
-    def __init__(self, dim, num_heads=4):
+    def __init__(self, dim, num_heads=2):
         super().__init__()
         self.dim = dim
         self.norm1 = nn.LayerNorm(dim)
