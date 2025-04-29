@@ -423,7 +423,9 @@ backbone:
   - [-1, 6, C2f, [256, True]]         # C2f block
   - [-1, 1, Conv, [512, 3, 2]]        # P4/16
   - [-1, 6, C2f, [512, True]]         # C2f block
-  - [-1, 1, SwinBlock, [128]]         # SwinBlock (assuming 512 channels)
+ # - [-1, 1, SwinBlock, [128]]         # SwinBlock (assuming 512 channels)
+  - [-1, 1, SwinBlock, [384]]  # match scaled output of previous layer for m 3la hka bdlt 
+
   - [-1, 1, Conv, [1024, 3, 2]]       # P5/32
   - [-1, 3, C2f, [1024, True]]        # C2f block
   - [-1, 1, SPPF, [1024, 5]]          # SPPF (kernel=5)
