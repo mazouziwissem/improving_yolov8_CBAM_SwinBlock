@@ -112,9 +112,10 @@ class SpatialAttention(nn.Module):
 
 
 class CBAM(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, c1=None):  # Accept c1 from YOLO YAML
         super(CBAM, self).__init__()
-        self.ca = ChannelAttention(channels)
+        assert c1 is not None, "CBAM requires input channels"
+        self.ca = ChannelAttention(c1)
         self.sa = SpatialAttention()
 
     def forward(self, x):
