@@ -37,6 +37,9 @@ class SwinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
 
+        # Ajouter l'impression des dimensions à ce stade
+        print(f"Input shape (before padding and rearrange): {x.shape}")
+
         # padding if not divisible by window_size
         pad_h = (self.window_size - H % self.window_size) % self.window_size
         pad_w = (self.window_size - W % self.window_size) % self.window_size
@@ -45,17 +48,39 @@ class SwinBlock(nn.Module):
         Hp, Wp = x.shape[2], x.shape[3]
 
         x = rearrange(x, 'b c h w -> b h w c')
+
+        # Impression après le rearrange
+        print(f"Shape after rearrange: {x.shape}")
+
         x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
 
+        # Impression après partition de fenêtres
+        print(f"Shape after window_partition: {x_windows.shape}")
+
         x_windows = self.norm1(x_windows)
+
+        # Impression après normalisation
+        print(f"Shape after norm1: {x_windows.shape}")
+
         attn_windows, _ = self.attn(x_windows, x_windows, x_windows)  # [num_windows*B, ws*ws, C]
         x_windows = x_windows + attn_windows
+
+        # Impression après attention
+        print(f"Shape after attention: {x_windows.shape}")
+
         x_windows = x_windows + self.mlp(self.norm2(x_windows))
+
+        # Impression après mlp
+        print(f"Shape after mlp: {x_windows.shape}")
 
         x = window_reverse(x_windows, self.window_size, Hp, Wp)  # [B, H', W', C]
         x = rearrange(x, 'b h w c -> b c h w')
 
+        # Impression avant de retourner
+        print(f"Shape before returning (after reverse): {x.shape}")
+
         return x[:, :, :H, :W]  # remove padding
+
 # import torch
 # import torch.nn as nn
 
