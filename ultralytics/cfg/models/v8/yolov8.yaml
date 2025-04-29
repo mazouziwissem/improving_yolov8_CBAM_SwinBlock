@@ -515,7 +515,6 @@ scales:
 
 # Backbone with SwinBlock and CBAM (only in backbone)
 backbone:
-  # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
   - [-1, 3, C2f, [128, True]]         # 2
@@ -524,28 +523,27 @@ backbone:
   - [-1, 1, CBAM, []]                 # 5 - CBAM at P3
   - [-1, 1, Conv, [512, 3, 2]]        # 6-P4/16
   - [-1, 6, C2f, [512, True]]         # 7
-  - [-1, 1, SwinBlock, [128]]         # 8 - SwinBlock with dim=512
+  - [-1, 1, SwinBlock, [128]]         # 8
   - [-1, 1, Conv, [1024, 3, 2]]       # 9-P5/32
   - [-1, 3, C2f, [1024, True]]        # 10
-  - [-1, 1, CBAM, []]                 # 11 - CBAM at P5
-  - [-1, 1, SPPF, [1024, 5]]          # 12
+  - [-1, 1, SPPF, [1024, 5]]          # 11
 
-# Head without CBAM or SwinBlock
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 13
-  - [[-1, 8], 1, Concat, [1]]                     # 14
-  - [-1, 3, C2f, [512]]                           # 15
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 12
+  - [[-1, 8], 1, Concat, [1]]                     # 13
+  - [-1, 3, C2f, [512]]                           # 14
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 16
-  - [[-1, 5], 1, Concat, [1]]                     # 17
-  - [-1, 3, C2f, [256]]                           # 18
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 15
+  - [[-1, 5], 1, Concat, [1]]                     # 16
+  - [-1, 3, C2f, [256]]                           # 17
 
-  - [-1, 1, Conv, [256, 3, 2]]                    # 19
-  - [[-1, 15], 1, Concat, [1]]                    # 20
-  - [-1, 3, C2f, [512]]                           # 21
+  - [-1, 1, Conv, [256, 3, 2]]                    # 18
+  - [[-1, 14], 1, Concat, [1]]                    # 19
+  - [-1, 3, C2f, [512]]                           # 20
 
-  - [-1, 1, Conv, [512, 3, 2]]                    # 22
-  - [[-1, 11], 1, Concat, [1]]                    # 23
-  - [-1, 3, C2f, [1024]]                          # 24
+  - [-1, 1, Conv, [512, 3, 2]]                    # 21
+  - [[-1, 10], 1, Concat, [1]]                    # 22  <-- anciennement 23
+  - [-1, 3, C2f, [1024]]                          # 23
 
-  - [[18, 21, 24], 1, Detect, [nc]]              # 25: Detect(P3, P4, P5)
+  - [[17, 20, 23], 1, Detect, [nc]]              # 24
+
