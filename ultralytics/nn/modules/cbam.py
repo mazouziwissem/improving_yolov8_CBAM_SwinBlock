@@ -111,10 +111,20 @@ class SpatialAttention(nn.Module):
         return self.sigmoid(self.conv(x_cat))
 
 
+# class CBAM(nn.Module):
+#     def __init__(self, channels):
+#         super(CBAM, self).__init__()
+#         self.ca = ChannelAttention(channels)
+#         self.sa = SpatialAttention()
+
+#     def forward(self, x):
+#         x = x * self.ca(x)
+#         x = x * self.sa(x)
+#         return x
+
 class CBAM(nn.Module):
-    def __init__(self, c1=None):  # Accept c1 from YOLO YAML
+    def __init__(self, c1):  # input channels are passed by Ultralytics automatically
         super(CBAM, self).__init__()
-        assert c1 is not None, "CBAM requires input channels"
         self.ca = ChannelAttention(c1)
         self.sa = SpatialAttention()
 
@@ -122,4 +132,3 @@ class CBAM(nn.Module):
         x = x * self.ca(x)
         x = x * self.sa(x)
         return x
-
