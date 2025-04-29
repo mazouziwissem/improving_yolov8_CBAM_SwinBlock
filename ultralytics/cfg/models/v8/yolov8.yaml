@@ -409,7 +409,11 @@
 #   - [[19, 23, 26], 1, Detect, [nc]]             # 27 - Final detection head
 
 #================================================================
-
+nc: 1  # number of classes
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]  # nano
+  m: [0.67, 0.75, 768]   # Recommend using at least m size for larger dataset
 
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]     # P1/2
