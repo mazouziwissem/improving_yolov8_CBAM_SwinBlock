@@ -524,7 +524,7 @@ backbone:
   - [-1, 1, CBAM, []]                 # 5 - CBAM at P3
   - [-1, 1, Conv, [512, 3, 2]]        # 6-P4/16
   - [-1, 6, C2f, [512, True]]         # 7
-  - [-1, 1, SwinBlock, [512]]         # 8 - SwinBlock with dim=512
+  - [-1, 1, SwinBlock, [128]]         # 8 - SwinBlock with dim=512
   - [-1, 1, Conv, [1024, 3, 2]]       # 9-P5/32
   - [-1, 3, C2f, [1024, True]]        # 10
   - [-1, 1, CBAM, []]                 # 11 - CBAM at P5
