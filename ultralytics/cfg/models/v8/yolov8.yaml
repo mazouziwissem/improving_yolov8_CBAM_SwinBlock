@@ -735,8 +735,8 @@
 
 #=====================================================newwwww update 
 
-# Configuration améliorée avec Swin Transformer
-nc: 1
+# Paramètres de base
+nc: 1  # Nombre de classes
 scales:
   n: [0.33, 0.25, 640]
   s: [0.33, 0.50, 640]
@@ -744,41 +744,55 @@ scales:
   l: [1.00, 1.00, 640]
   x: [1.00, 1.25, 640]
 
+# Backbone optimisé
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
-  - [-1, 1, SwinBlock, [64, 7, 2]]    # 1 (Early-stage attention)
-  - [-1, 1, Conv, [128, 3, 2]]        # 2-P2/4
+  # Stade initial
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2 [320x320]
+  - [-1, 1, SwinBlock, [64, 7, 2]]     # 1 (ch=64, window=7, heads=2)
+  
+  # Stade intermédiaire
+  - [-1, 1, Conv, [128, 3, 2]]        # 2-P2/4 [160x160]
   - [-1, 3, C2f, [128, True]]         # 3
-  - [-1, 1, SwinBlock, [128, 7, 4]]   # 4 (Multi-scale fusion)
-  - [-1, 1, Conv, [256, 3, 2]]        # 5-P3/8
+  - [-1, 1, SwinBlock, [128, 7, 4]]   # 4 (ch=128, window=7, heads=4)
+  
+  # Haut niveau
+  - [-1, 1, Conv, [256, 3, 2]]        # 5-P3/8 [80x80]
   - [-1, 6, C2f, [256, True]]         # 6
-  - [-1, 1, SwinBlock, [256, 14, 8]]  # 7 (High-level semantics)
-  - [-1, 1, Conv, [512, 3, 2]]        # 8-P4/16
+  - [-1, 1, SwinBlock, [256, 14, 8]]  # 7 (ch=256, window=14, heads=8)
+  
+  # Caractéristiques profondes
+  - [-1, 1, Conv, [512, 3, 2]]        # 8-P4/16 [40x40]
   - [-1, 6, C2f, [512, True]]         # 9
-  - [-1, 1, SwinBlock, [512, 14, 8]]  # 10 (Global context)
-  - [-1, 1, Conv, [1024, 3, 2]]       # 11-P5/32
+  - [-1, 1, SwinBlock, [512, 14, 8]]  # 10 (ch=512, window=14, heads=8)
+  
+  # Sortie backbone
+  - [-1, 1, Conv, [1024, 3, 2]]       # 11-P5/32 [20x20]
   - [-1, 3, C2f, [1024, True]]        # 12
   - [-1, 1, CBAM, []]                 # 13
   - [-1, 1, SPPF, [1024, 5]]          # 14
 
+# Head amélioré
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 15
-  - [[-1, 10], 1, Concat, [1]]                   # 16 (Fusion profonde)
-  - [-1, 3, C2f, [512]]                          # 17
-  - [-1, 1, SwinBlock, [512, 7, 4]]              # 18 (Feature refinement)
+  # Première branche (haute résolution)
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15
+  - [[-1, 10], 1, Concat, [1]]                 # 16 (fusion avec layer10)
+  - [-1, 3, C2f, [512]]                        # 17
+  - [-1, 1, SwinBlock, [512, 7, 4]]            # 18 (ch=512, window=7, heads=4)
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 19
-  - [[-1, 7], 1, Concat, [1]]                    # 20
-  - [-1, 3, C2f, [256]]                          # 21
-  - [-1, 1, SwinBlock, [256, 7, 2]]              # 22 (Multi-resolution processing)
+  # Deuxième branche
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19
+  - [[-1, 7], 1, Concat, [1]]                  # 20 (fusion avec layer7)
+  - [-1, 3, C2f, [256]]                        # 21
+  - [-1, 1, SwinBlock, [256, 7, 2]]            # 22 (ch=256, window=7, heads=2)
 
-  - [-1, 1, Conv, [256, 3, 2]]                   # 23
-  - [[-1, 18], 1, Concat, [1]]                   # 24
-  - [-1, 3, C2f, [512]]                          # 25
-  - [-1, 1, SwinBlock, [512, 14, 8]]             # 26 (Cross-scale attention)
+  # Troisième branche (basse résolution)
+  - [-1, 1, Conv, [256, 3, 2]]                 # 23
+  - [[-1, 18], 1, Concat, [1]]                 # 24 (fusion avec layer18)
+  - [-1, 3, C2f, [512]]                        # 25
+  - [-1, 1, SwinBlock, [512, 14, 8]]           # 26 (ch=512, window=14, heads=8)
 
-  - [-1, 1, Conv, [512, 3, 2]]                   # 27
-  - [[-1, 14], 1, Concat, [1]]                   # 28
-  - [-1, 3, C2f, [1024]]                         # 29
-
-  - [[21, 25, 29], 1, Detect, [nc]]              # 30
+  # Détection finale
+  - [-1, 1, Conv, [512, 3, 2]]                 # 27
+  - [[-1, 14], 1, Concat, [1]]                 # 28 (fusion avec layer14)
+  - [-1, 3, C2f, [1024]]                       # 29
+  - [[21, 25, 29], 1, Detect, [nc]]            # 30 (couches de détection)

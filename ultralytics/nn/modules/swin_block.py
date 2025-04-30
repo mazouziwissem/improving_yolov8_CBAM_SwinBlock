@@ -64,106 +64,66 @@ import torch.nn.functional as F
 from einops import rearrange
 
 class WindowAttention(nn.Module):
-    """Attention avec décalage de fenêtre optimisée pour YOLO"""
     def __init__(self, dim, window_size, num_heads):
         super().__init__()
         self.dim = dim
-        self.window_size = window_size
+        self.ws = window_size
         self.num_heads = num_heads
-        head_dim = dim // num_heads
         
-        self.scale = head_dim ** -0.5
-        self.qkv = nn.Linear(dim, dim * 3)
-        self.proj = nn.Linear(dim, dim)
+        self.qkv = nn.Conv2d(dim, dim * 3, 1)
+        self.proj = nn.Conv2d(dim, dim, 1)
         
-        # Masque d'attention dynamique
-        self.register_buffer("relative_index", self.create_relative_index(window_size))
-        self.relative_bias = nn.Parameter(torch.randn(num_heads, (2 * window_size - 1) ** 2))
-
-    def create_relative_index(self, size):
-        coords = torch.stack(torch.meshgrid(torch.arange(size), torch.arange(size)))
-        return (coords[0] - coords[1]) + size - 1
-
-    def forward(self, x, mask=None):
-        B, N, C = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C//self.num_heads).permute(2,0,3,1,4)
-        q, k, v = qkv[0], qkv[1], qkv[2]
+    def forward(self, x):
+        B, C, H, W = x.shape
+        qkv = self.qkv(x).chunk(3, dim=1)
         
-        attn = (q @ k.transpose(-2, -1)) * self.scale
-        attn += self.relative_bias[:, self.relative_index.flatten()].view(
-            self.num_heads, self.window_size**2, self.window_size**2)
+        # Réorganisation en fenêtres
+        q, k, v = map(lambda t: rearrange(t, 'b (h d) (ws1 hh) (ws2 ww) -> b h (hh ww) (ws1 ws2) d', 
+                                        h=self.num_heads, ws1=self.ws, ws2=self.ws), qkv)
         
-        if mask is not None:
-            attn += mask.unsqueeze(1)
-            
+        attn = (q @ k.transpose(-2, -1)) * (1.0 / (C ** 0.5))
         attn = F.softmax(attn, dim=-1)
-        x = (attn @ v).transpose(1,2).reshape(B,N,C)
+        
+        x = (attn @ v)
+        x = rearrange(x, 'b h (hh ww) (ws1 ws2) d -> b (h d) (hh ws1) (ww ws2)', 
+                    hh=H//self.ws, ws1=self.ws, h=self.num_heads)
+        
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    """Version optimisée pour l'intégration dans YOLO"""
     def __init__(self, channels, window_size=7, num_heads=4, shift=False):
         super().__init__()
         self.window_size = window_size
         self.shift = shift
         self.num_heads = num_heads
         
-        self.norm1 = nn.LayerNorm(channels)
+        # Modification clé : Normalisation adaptée aux CNN
+        self.norm1 = nn.BatchNorm2d(channels)  # Au lieu de LayerNorm
         self.attn = WindowAttention(channels, window_size, num_heads)
-        self.norm2 = nn.LayerNorm(channels)
-        self.mlp = nn.Sequential(
-            nn.Linear(channels, channels * 4),
-            nn.GELU(),
-            nn.Linear(channels * 4, channels)
-        )
+        self.norm2 = nn.BatchNorm2d(channels)  # Normalisation 2D
         
-        if self.shift:
-            self.register_buffer('attention_mask', self.create_mask(window_size))
-
-    def create_mask(self, window_size):
-        mask = torch.zeros(window_size**2, window_size**2)
-        shift = window_size // 2
-        for i in range(window_size):
-            for j in range(window_size):
-                if (i < shift and j < shift) or (i >= shift and j >= shift):
-                    mask[i*window_size+j, :] = 0
-                else:
-                    mask[i*window_size+j, :] = -100
-        return mask.unsqueeze(0)
-
-    def window_partition(self, x):
-        B, C, H, W = x.shape
-        x = x.view(B, C, H//self.window_size, self.window_size, W//self.window_size, self.window_size)
-        return rearrange(x, 'b c h w1 h w2 -> (b h w) (w1 w2) c')
-
-    def window_reverse(self, windows, H, W):
-        B = int(windows.shape[0] / (H * W / self.window_size**2))
-        return rearrange(windows, '(b h w) (w1 w2) c -> b c (h w1) (w w2)', 
-                         b=B, h=H//self.window_size, w1=self.window_size)
+        self.mlp = nn.Sequential(
+            nn.Conv2d(channels, channels * 4, 1),
+            nn.GELU(),
+            nn.Conv2d(channels * 4, channels, 1)
+        )
 
     def forward(self, x):
         B, C, H, W = x.shape
         
-        # Shift des fenêtres
         if self.shift:
             x = torch.roll(x, shifts=(self.window_size//2, self.window_size//2), dims=(2,3))
         
-        # Partitionnement des fenêtres
+        # Supprimer le permute et utiliser la normalisation 2D
         shortcut = x
-        x = self.norm1(x.permute(0,2,3,1))
+        x = self.norm1(x)
+        
+        # Partitionnement direct sans changement de dimensions
         windows = self.window_partition(x)
-        
-        # Attention
-        if self.shift:
-            attn = self.attn(windows, self.attention_mask)
-        else:
-            attn = self.attn(windows)
-        
-        # Fusion des fenêtres
+        attn = self.attn(windows)
         x = self.window_reverse(attn, H, W)
-        x = shortcut + x.permute(0,3,1,2)
         
-        # MLP
-        x = x + self.mlp(self.norm2(x.permute(0,2,3,1))).permute(0,3,1,2)
+        x = shortcut + x
+        x = x + self.mlp(self.norm2(x))
         
         return x
