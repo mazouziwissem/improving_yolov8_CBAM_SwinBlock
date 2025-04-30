@@ -91,12 +91,12 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, channels, window_size=7, num_heads=4):
+    def __init__(self, channels, window_size=7, num_heads=4, shift=False):
         super().__init__()
         self.window_size = window_size
         self.num_heads = num_heads
+        self.shift = shift
         
-        # Vérification de la compatibilité des dimensions
         assert channels % num_heads == 0, f"Channels {channels} must be divisible by num_heads {num_heads}"
         
         self.norm1 = nn.BatchNorm2d(channels)
@@ -107,19 +107,46 @@ class SwinBlock(nn.Module):
             nn.GELU(),
             nn.Conv2d(channels * 4, channels, 1)
         )
+
+        if self.shift:
+            self.register_buffer('attention_mask', self.create_mask(window_size))
+
+    def create_mask(self, window_size):
+        mask = torch.zeros(window_size**2, window_size**2)
+        shift = window_size // 2
+        for i in range(window_size):
+            for j in range(window_size):
+                if (i < shift and j < shift) or (i >= shift and j >= shift):
+                    mask[i*window_size+j, :] = 0
+                else:
+                    mask[i*window_size+j, :] = -100
+        return mask.unsqueeze(0)
+
+    def window_partition(self, x):
+        B, C, H, W = x.shape
+        x = x.view(B, C, H//self.window_size, self.window_size, W//self.window_size, self.window_size)
+        return rearrange(x, 'b c h w1 h w2 -> (b h w) (w1 w2) c')
+
+    def window_reverse(self, windows, H, W):
+        B = int(windows.shape[0] / (H * W / self.window_size**2))
+        return rearrange(windows, '(b h w) (w1 w2) c -> b c (h w1) (w w2)', 
+                         b=B, h=H//self.window_size, w1=self.window_size)
+
     def forward(self, x):
         B, C, H, W = x.shape
         
         if self.shift:
             x = torch.roll(x, shifts=(self.window_size//2, self.window_size//2), dims=(2,3))
         
-        # Supprimer le permute et utiliser la normalisation 2D
         shortcut = x
         x = self.norm1(x)
         
-        # Partitionnement direct sans changement de dimensions
         windows = self.window_partition(x)
-        attn = self.attn(windows)
+        if self.shift:
+            attn = self.attn(windows, self.attention_mask)
+        else:
+            attn = self.attn(windows)
+            
         x = self.window_reverse(attn, H, W)
         
         x = shortcut + x
