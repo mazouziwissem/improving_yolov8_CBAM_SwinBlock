@@ -107,3 +107,22 @@ class SwinBlock(nn.Module):
             nn.GELU(),
             nn.Conv2d(channels * 4, channels, 1)
         )
+    def forward(self, x):
+        B, C, H, W = x.shape
+        
+        if self.shift:
+            x = torch.roll(x, shifts=(self.window_size//2, self.window_size//2), dims=(2,3))
+        
+        # Supprimer le permute et utiliser la normalisation 2D
+        shortcut = x
+        x = self.norm1(x)
+        
+        # Partitionnement direct sans changement de dimensions
+        windows = self.window_partition(x)
+        attn = self.attn(windows)
+        x = self.window_reverse(attn, H, W)
+        
+        x = shortcut + x
+        x = x + self.mlp(self.norm2(x))
+        
+        return x
