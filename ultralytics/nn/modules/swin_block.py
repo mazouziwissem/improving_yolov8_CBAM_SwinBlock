@@ -91,39 +91,19 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, channels, window_size=7, num_heads=4, shift=False):
+    def __init__(self, channels, window_size=7, num_heads=4):
         super().__init__()
         self.window_size = window_size
-        self.shift = shift
         self.num_heads = num_heads
         
-        # Modification clé : Normalisation adaptée aux CNN
-        self.norm1 = nn.BatchNorm2d(channels)  # Au lieu de LayerNorm
-        self.attn = WindowAttention(channels, window_size, num_heads)
-        self.norm2 = nn.BatchNorm2d(channels)  # Normalisation 2D
+        # Vérification de la compatibilité des dimensions
+        assert channels % num_heads == 0, f"Channels {channels} must be divisible by num_heads {num_heads}"
         
+        self.norm1 = nn.BatchNorm2d(channels)
+        self.attn = WindowAttention(channels, window_size, num_heads)
+        self.norm2 = nn.BatchNorm2d(channels)
         self.mlp = nn.Sequential(
             nn.Conv2d(channels, channels * 4, 1),
             nn.GELU(),
             nn.Conv2d(channels * 4, channels, 1)
         )
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        
-        if self.shift:
-            x = torch.roll(x, shifts=(self.window_size//2, self.window_size//2), dims=(2,3))
-        
-        # Supprimer le permute et utiliser la normalisation 2D
-        shortcut = x
-        x = self.norm1(x)
-        
-        # Partitionnement direct sans changement de dimensions
-        windows = self.window_partition(x)
-        attn = self.attn(windows)
-        x = self.window_reverse(attn, H, W)
-        
-        x = shortcut + x
-        x = x + self.mlp(self.norm2(x))
-        
-        return x
