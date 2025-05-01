@@ -27,7 +27,8 @@ class C2f_SE(nn.Module):
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, 2 * c_, 1, 1)
         #self.cv2 = Conv((2 + n) * c_, c2, 1, 1)
-        self.cv2 = Conv(int((2 + n) * c_), c2, 1, 1)
+        #self.cv2 = Conv(int((2 + n) * c_), c2, 1, 1)
+        self.cv2 = Conv(int((2 + n) * c_), c2, (1, 1), (1, 1))
 
         self.m = nn.ModuleList([
             Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)
