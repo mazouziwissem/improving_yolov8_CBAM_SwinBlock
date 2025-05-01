@@ -790,61 +790,52 @@
 
 #============deep
 
-nc: 1 # Nombre de classes
+nc: 1
 
-# Échelles optimisées pour équilibrer précision et complexité
 scales:
   n: [0.33, 0.25, 1024]
   s: [0.33, 0.50, 1024]
   m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 640]  # Augmentation des canaux pour P5
-  x: [1.00, 1.25, 640]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
 
 backbone:
-  # Stade initial renforcé
-  - [-1, 1, Conv, [64, 3, 2]]   # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]   # 2
-  - [-1, 1, CBAM, []]           # 3 - CBAM précoce
+  - [-1, 1, Conv, [64, 3, 2]]    # 0-P1/2 [..., 64]
+  - [-1, 1, Conv, [128, 3, 2]]   # 1-P2/4 [..., 128]
+  - [-1, 3, C2f, [128, True]]    # 2 [..., 128]
+  - [-1, 1, CBAM, []]            # 3 [..., 128]
   
-  # Bloc intermédiaire avec augmentation de capacité
-  - [-1, 1, Conv, [256, 3, 2]]  # 4-P3/8
-  - [-1, 6, C2f, [256, True]]   # 5
-  - [-1, 1, SwinBlock, [128]]   # 6 - Swin précoce
+  - [-1, 1, Conv, [256, 3, 2]]   # 4-P3/8 [..., 256]
+  - [-1, 6, C2f, [256, True]]    # 5 [..., 256]
+  - [-1, 1, SwinBlock, [256]]    # 6 [Corrigé: 256 vs 128] 
   
-  # Feature extraction haute résolution
-  - [-1, 1, Conv, [512, 3, 2]]  # 7-P4/16
-  - [-1, 9, C2f, [512, True]]   # 8 - Plus de répétitions
-  - [-1, 1, SPPF, [512, 7]]     # 9 - Kernel élargi
+  - [-1, 1, Conv, [512, 3, 2]]   # 7-P4/16 [..., 512]
+  - [-1, 9, C2f, [512, True]]    # 8 [..., 512]
+  - [-1, 1, SPPF, [512, 7]]      # 9 [..., 512]
   
-  # Stade profond avec double attention
-  - [-1, 1, Conv, [640, 3, 2]]  # 10-P5/32
-  - [-1, 6, C2f, [640, True]]   # 11
-  - [-1, 1, CBAM, []]           # 12 - CBAM hiérarchique
-  - [-1, 1, SPPF, [640, 5]]     # 13
-  - [-1, 1, SwinBlock, [128]]   # 14 - Swin profond
+  - [-1, 1, Conv, [512, 3, 2]]   # 10-P5/32 [..., 512]
+  - [-1, 6, C2f, [512, True]]    # 11 [..., 512]
+  - [-1, 1, CBAM, []]            # 12 [..., 512]
+  - [-1, 1, SPPF, [512, 5]]      # 13 [..., 512]
+  - [-1, 1, SwinBlock, [512]]    # 14 [Corrigé: 512 vs 256]
 
 head:
-  # PANet amélioré avec connexions croisées
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15
-  - [[-1, 8], 1, Concat, [1]]                 # 16 - Connexion P4
-  - [-1, 3, C2f, [512]]                       # 17
-  - [-1, 1, CBAM, []]                         # 18 - Attention dans la tête
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15 [..., 512]
+  - [[-1, 8], 1, Concat, [1]]                 # 16 [..., 512+512=1024]
+  - [-1, 3, C2f, [512]]                       # 17 [..., 512]
+  - [-1, 1, CBAM, []]                         # 18 [..., 512]
   
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19
-  - [[-1, 5], 1, Concat, [1]]                 # 20 - Connexion P3
-  - [-1, 3, C2f, [256]]                       # 21
-  - [-1, 1, SwinBlock, [128]]                 # 22 - Swin dans la tête
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19 [..., 512]
+  - [[-1, 5], 1, Concat, [1]]                 # 20 [..., 512+256=768]
+  - [-1, 3, C2f, [256]]                       # 21 [..., 256]
+  - [-1, 1, SwinBlock, [256]]                 # 22 [Corrigé: 256 vs 128]
   
-  # Branche de détection moyenne
-  - [-1, 1, Conv, [256, 3, 2]]                # 23
-  - [[-1, 17], 1, Concat, [1]]                # 24 - Fusion P4
-  - [-1, 3, C2f, [512]]                       # 25
+  - [-1, 1, Conv, [256, 3, 2]]                # 23 [..., 256]
+  - [[-1, 17], 1, Concat, [1]]                # 24 [..., 256+512=768]
+  - [-1, 3, C2f, [512]]                       # 25 [..., 512]
   
-  # Branche de détection large
-  - [-1, 1, Conv, [512, 3, 2]]                # 26
-  - [[-1, 13], 1, Concat, [1]]                # 27 - Fusion P5
-  - [-1, 3, C2f, [640]]                       # 28
+  - [-1, 1, Conv, [512, 3, 2]]                # 26 [..., 512]
+  - [[-1, 13], 1, Concat, [1]]                # 27 [..., 512+512=1024]
+  - [-1, 3, C2f, [512]]                       # 28 [..., 512]
   
-  # Quatre têtes de détection multi-échelle
-  - [[21, 25, 28, 14], 1, Detect, [nc]]       # 29 - 4 niveaux de sortie
+  - [[21, 25, 28], 1, Detect, [nc]]           # 29 [Output cohérent]
