@@ -89,19 +89,20 @@ class WindowAttention(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        x = x.permute(0, 2, 3, 1).contiguous().view(B, H * W, C)
-        x = x.view(B, C, H, W)
 
+        # Partition into windows
         x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
+
+        # Attention
         qkv = self.qkv(x_windows).reshape(-1, self.window_size**2, 3, self.num_heads, self.head_dim)
         q, k, v = qkv.unbind(2)  # [nW*B, ws*ws, num_heads, head_dim]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
-
         out = (attn @ v).transpose(1, 2).reshape(-1, self.window_size**2, self.dim)
         out = self.proj(out)
 
+        # Reverse to image
         out = window_reverse(out, self.window_size, H, W, self.dim)
         return out
 
