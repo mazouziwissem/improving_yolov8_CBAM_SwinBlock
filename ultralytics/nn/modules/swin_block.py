@@ -62,25 +62,36 @@ from einops import rearrange
 from torch import nn
 
 class SwinBlock(nn.Module):
-    def __init__(self, dim, patch_size=4, num_heads=4, window_size=7):
+    def __init__(self, dim=None, num_heads=4, window_size=7):
         super().__init__()
-        self.dim = dim
         self.window_size = window_size
+        self.num_heads = num_heads
+        self.norm1 = None  # to initialize in forward
+        self.attn = None
+        self.norm2 = None
+        self.mlp = None
+        self.init_done = False
+        self.dim = dim
+
+    def _init_layers(self, dim):
         self.norm1 = nn.LayerNorm(dim)
-        self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+        self.attn = nn.MultiheadAttention(dim, self.num_heads, batch_first=True)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = nn.Sequential(
             nn.Linear(dim, dim * 4),
             nn.GELU(),
             nn.Linear(dim * 4, dim)
         )
+        self.init_done = True
 
     def forward(self, x):
         B, C, H, W = x.shape
-        x = rearrange(x, 'b c h w -> b (h w) c')  # flatten spatial
+        if not self.init_done:
+            self._init_layers(C)
+        x = rearrange(x, 'b c h w -> b (h w) c')  # [B, N, C]
         x_norm = self.norm1(x)
         attn_out, _ = self.attn(x_norm, x_norm, x_norm)
         x = x + attn_out
         x = x + self.mlp(self.norm2(x))
-        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)  # reshape back
+        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         return x
