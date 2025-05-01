@@ -88,23 +88,26 @@ class WindowAttention(nn.Module):
         self.proj = nn.Linear(dim, dim)
 
     def forward(self, x):
-        B, C, H, W = x.shape
+        B, H, W, C = x.shape  # after permute
 
-        # Partition into windows
-        x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
+        x_windows = x.view(B, H // self.window_size, self.window_size,
+                           W // self.window_size, self.window_size, C)
+        x_windows = x_windows.permute(0, 1, 3, 2, 4, 5).reshape(-1, self.window_size ** 2, C)
 
-        # Attention
         qkv = self.qkv(x_windows).reshape(-1, self.window_size**2, 3, self.num_heads, self.head_dim)
-        q, k, v = qkv.unbind(2)  # [nW*B, ws*ws, num_heads, head_dim]
+        q, k, v = qkv.unbind(2)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
-        out = (attn @ v).transpose(1, 2).reshape(-1, self.window_size**2, self.dim)
+        out = (attn @ v).transpose(1, 2).reshape(-1, self.window_size**2, C)
         out = self.proj(out)
 
-        # Reverse to image
-        out = window_reverse(out, self.window_size, H, W, self.dim)
+        # Reverse windows
+        out = out.view(B, H // self.window_size, W // self.window_size,
+                       self.window_size, self.window_size, C)
+        out = out.permute(0, 1, 3, 2, 4, 5).reshape(B, H, W, C)
         return out
+
 
 class SwinBlock(nn.Module):
     def __init__(self, channels, window_size=8, num_heads=4, shift=False):
@@ -122,13 +125,14 @@ class SwinBlock(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        print("Input shape to SwinBlock:", x.shape)  # B, C, H, W
         if self.shift:
-            x = torch.roll(x, shifts=(-self.window_size // 2,)*2, dims=(2, 3))
+            x = torch.roll(x, shifts=(-self.window_size // 2,) * 2, dims=(2, 3))
 
         shortcut = x
         x = self.norm1(x)
+        x = x.permute(0, 2, 3, 1)  # (B, H, W, C) for Linear
         x = self.attn(x)
+        x = x.permute(0, 3, 1, 2)  # (B, C, H, W) back
         x = shortcut + x
 
         x = x + self.mlp(self.norm2(x))
