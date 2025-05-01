@@ -100,11 +100,12 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, base_channels, window_size=7, num_heads=4):
+    def __init__(self, base_channels, window_size=7, num_heads=4, shift=False):
         super().__init__()
-        self.channels = int(base_channels * 0.25)  # Application du scale width
+        self.channels = int(base_channels * 0.25)  # Scale width
         self.window_size = window_size
         self.num_heads = num_heads
+        self.shift = shift  # Paramètre shift ajouté
         
         self.norm1 = nn.BatchNorm2d(self.channels)
         self.attn = WindowAttention(self.channels, window_size, num_heads)
