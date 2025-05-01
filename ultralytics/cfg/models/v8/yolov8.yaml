@@ -799,43 +799,44 @@ scales:
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
 
+
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]    # 0-P1/2 [..., 64]
-  - [-1, 1, Conv, [128, 3, 2]]   # 1-P2/4 [..., 128]
-  - [-1, 3, C2f, [128, True]]    # 2 [..., 128]
-  - [-1, 1, CBAM, []]            # 3 [..., 128]
-  
-  - [-1, 1, Conv, [256, 3, 2]]   # 4-P3/8 [..., 256]
-  - [-1, 6, C2f, [256, True]]    # 5 [..., 256]
-  - [-1, 1, SwinBlock, [256]]    # 6 [Corrigé: 256 vs 128] 
-  
-  - [-1, 1, Conv, [512, 3, 2]]   # 7-P4/16 [..., 512]
-  - [-1, 9, C2f, [512, True]]    # 8 [..., 512]
-  - [-1, 1, SPPF, [512, 7]]      # 9 [..., 512]
-  
-  - [-1, 1, Conv, [512, 3, 2]]   # 10-P5/32 [..., 512]
-  - [-1, 6, C2f, [512, True]]    # 11 [..., 512]
-  - [-1, 1, CBAM, []]            # 12 [..., 512]
-  - [-1, 1, SPPF, [512, 5]]      # 13 [..., 512]
-  - [-1, 1, SwinBlock, [512]]    # 14 [Corrigé: 512 vs 256]
+  # [from, repeat, module, args]
+  - [-1, 1, Conv,    [64, 3, 2]]   # 0 - P1/2
+  - [-1, 1, Conv,    [128, 3, 2]]  # 1 - P2/4
+  - [-1, 1, SwinBlock, [128, 6]]   # 2 - SwinTransformer (patch=6) @ premier C2f
+  - [-1, 3, C2f,     [128, True]]  # 3
+  - [-1, 1, Conv,    [256, 3, 2]]  # 4 - P3/8
+  - [-1, 6, C2f,     [256, True]]  # 5
+  - [-1, 1, Conv,    [512, 3, 2]]  # 6 - P4/16
+  - [-1, 6, C2f,     [512, True]]  # 7
+  - [-1, 1, Conv,    [1024, 3, 2]] # 8 - P5/32
+  - [-1, 3, C2f,     [1024, True]] # 9
+  - [-1, 1, CBAM,    [1024]]       # 10 - CBAM en fin de backbone
+  - [-1, 1, SPPF,    [1024, 5]]    # 11 - SPPF
 
 head:
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 15 [..., 512]
-  - [[-1, 8], 1, Concat, [1]]                 # 16 [..., 512+512=1024]
-  - [-1, 3, C2f, [512]]                       # 17 [..., 512]
-  - [-1, 1, CBAM, []]                         # 18 [..., 512]
-  
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']] # 19 [..., 512]
-  - [[-1, 5], 1, Concat, [1]]                 # 20 [..., 512+256=768]
-  - [-1, 3, C2f, [256]]                       # 21 [..., 256]
-  - [-1, 1, SwinBlock, [256]]                 # 22 [Corrigé: 256 vs 128]
-  
-  - [-1, 1, Conv, [256, 3, 2]]                # 23 [..., 256]
-  - [[-1, 17], 1, Concat, [1]]                # 24 [..., 256+512=768]
-  - [-1, 3, C2f, [512]]                       # 25 [..., 512]
-  
-  - [-1, 1, Conv, [512, 3, 2]]                # 26 [..., 512]
-  - [[-1, 13], 1, Concat, [1]]                # 27 [..., 512+512=1024]
-  - [-1, 3, C2f, [512]]                       # 28 [..., 512]
-  
-  - [[21, 25, 28], 1, Detect, [nc]]           # 29 [Output cohérent]
+  # Upsample + CBAM + Concat (P4), puis C2f
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [-1, 1, CBAM,    [1024]]
+  - [[-2, 7], 1, Concat, [1]]       # fusion avec backbone P4 (index 7)
+  - [-1, 3, C2f, [512]]            # 15 - P4/16
+
+  # Upsample + CBAM + Concat (P3), puis C2f
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [-1, 1, CBAM,    [512]]
+  - [[-2, 5], 1, Concat, [1]]       # fusion avec backbone P3 (index 5)
+  - [-1, 3, C2f, [256]]            # 19 - P3/8
+
+  # Downsample + fusion avec branche P4, puis C2f
+  - [-1, 1, Conv,    [256, 3, 2]]
+  - [[-1, 15], 1, Concat, [1]]      # fusion avec C2f P4 (index 15)
+  - [-1, 3, C2f, [512]]            # 22 - P4/16 (medium)
+
+  # Downsample + fusion avec branche P5, puis C2f
+  - [-1, 1, Conv,    [512, 3, 2]]
+  - [[-1, 11], 1, Concat, [1]]      # fusion avec SPPF P5 (index 11)
+  - [-1, 3, C2f, [1024]]           # 25 - P5/32 (large)
+
+  # Détection sur P3, P4, P5 (indices 19, 22, 25)
+  - [[19, 22, 25], 1, Detect, [nc]]
