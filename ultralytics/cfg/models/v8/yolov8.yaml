@@ -798,4 +798,3 @@ head:
   
   # Détection à trois échelles
   - [[23, 27, 31], 1, Detect, [nc]]               # 32 - Détection finale
-```
