@@ -100,12 +100,12 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, base_channels, window_size=7, num_heads=4, shift=False):
+    def __init__(self, base_channels, window_size=8, num_heads=4, shift=False):
         super().__init__()
-        self.channels = int(base_channels * 0.25)  # Scale width
+        self.channels = int(base_channels * 0.25)  # Scale width=0.25
         self.window_size = window_size
         self.num_heads = num_heads
-        self.shift = shift  # Paramètre shift ajouté
+        self.shift = shift
         
         self.norm1 = nn.BatchNorm2d(self.channels)
         self.attn = WindowAttention(self.channels, window_size, num_heads)
@@ -132,6 +132,8 @@ class SwinBlock(nn.Module):
 
     def window_partition(self, x):
         B, C, H, W = x.shape
+        assert H % self.window_size == 0 and W % self.window_size == 0, \
+            f"Dimensions ({H}x{W}) must be divisible by window_size ({self.window_size})"
         x = x.view(B, C, H//self.window_size, self.window_size, W//self.window_size, self.window_size)
         return rearrange(x, 'b c h wh w ww -> b (h w) (wh ww) c')
 
