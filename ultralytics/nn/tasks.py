@@ -11,14 +11,11 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
-from ultralytics.nn.modules.sam import SAM
-from ultralytics.nn.modules.ecbam import ECBAM
+from ultralytics.nn.modules.c2f_SE import C2f_SE
 
-globals()['SAM'] = SAM
-globals()['ECBAM'] = ECBAM
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
-
+globals()['C2f_SE'] = C2f_SE
 
 
 from ultralytics.nn.autobackend import check_class_names
