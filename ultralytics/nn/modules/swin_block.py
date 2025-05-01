@@ -100,19 +100,19 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, channels, window_size=7, num_heads=4, shift=False):
+    def __init__(self, base_channels, window_size=7, num_heads=4):
         super().__init__()
+        self.channels = int(base_channels * 0.25)  # Application du scale width
         self.window_size = window_size
         self.num_heads = num_heads
-        self.shift = shift
         
-        self.norm1 = nn.BatchNorm2d(channels)
-        self.attn = WindowAttention(channels, window_size, num_heads)
-        self.norm2 = nn.BatchNorm2d(channels)
+        self.norm1 = nn.BatchNorm2d(self.channels)
+        self.attn = WindowAttention(self.channels, window_size, num_heads)
+        self.norm2 = nn.BatchNorm2d(self.channels)
         self.mlp = nn.Sequential(
-            nn.Conv2d(channels, channels * 4, 1),
+            nn.Conv2d(self.channels, self.channels * 4, 1),
             nn.GELU(),
-            nn.Conv2d(channels * 4, channels, 1)
+            nn.Conv2d(self.channels * 4, self.channels, 1)
         )
         
         if self.shift:
