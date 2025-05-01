@@ -114,9 +114,9 @@ class SwinBlock(nn.Module):
         super().__init__()
         self.window_size = window_size
         self.shift = shift
-        self.norm1 = nn.BatchNorm2d(channels)
+        self.norm1 = nn.LayerNorm(channels)  # <-- Changed
         self.attn = WindowAttention(channels, window_size, num_heads)
-        self.norm2 = nn.BatchNorm2d(channels)
+        self.norm2 = nn.LayerNorm(channels)  # <-- Changed
         self.mlp = nn.Sequential(
             nn.Conv2d(channels, channels * 4, 1),
             nn.GELU(),
@@ -129,11 +129,12 @@ class SwinBlock(nn.Module):
             x = torch.roll(x, shifts=(-self.window_size // 2,) * 2, dims=(2, 3))
 
         shortcut = x
+
+        x = x.permute(0, 2, 3, 1)  # (B, H, W, C)
         x = self.norm1(x)
-        x = x.permute(0, 2, 3, 1)  # (B, H, W, C) for Linear
         x = self.attn(x)
-        x = x.permute(0, 3, 1, 2)  # (B, C, H, W) back
+        x = x.permute(0, 3, 1, 2)  # Back to (B, C, H, W)
         x = shortcut + x
 
-        x = x + self.mlp(self.norm2(x))
+        x = x + self.mlp(self.norm2(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2))
         return x
