@@ -25,21 +25,14 @@ __all__ = (
 )
 
 
-# def autopad(k, p=None, d=1):  # kernel, padding, dilation
-#     """Pad to 'same' shape outputs."""
-#     if d > 1:
-#         k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
-#     if p is None:
-#         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
-#     print(f"autopad -> k: {k}, p: {p}")  # debug print
-#     return p
-
-def autopad(k, p=None, d=1):
+def autopad(k, p=None, d=1):  # kernel, padding, dilation
+    """Pad to 'same' shape outputs."""
     if d > 1:
-        k = (d * (k[0] - 1) + 1, d * (k[1] - 1) + 1) if isinstance(k, tuple) else d * (k - 1) + 1
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
     if p is None:
-        p = (k[0] // 2, k[1] // 2) if isinstance(k, tuple) else k // 2
-    return p if isinstance(p, int) else tuple(p)
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+    return p
+
 
 class Conv(nn.Module):
     """
@@ -69,11 +62,7 @@ class Conv(nn.Module):
             act (bool | nn.Module): Activation function.
         """
         super().__init__()
-        #self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
-        k_ = k if isinstance(k, tuple) else (k, k)
-        p_ = autopad(k_, p, d)
-        self.conv = nn.Conv2d(c1, c2, k_, s, p_, groups=g, dilation=d, bias=False)
-
+        self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
         self.bn = nn.BatchNorm2d(c2)
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
