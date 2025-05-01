@@ -7,7 +7,8 @@ class C2F_SE(nn.Module):
         super().__init__()
         c_ = int(c2 * e)  # intermediate channels
         self.cv1 = Conv(c1, 2 * c_, 1, 1)  # pointwise convolution
-        self.cv2 = Conv(int((2 + n) * c_), c2, 1, 1)
+        #self.cv2 = Conv(int((2 + n) * c_), c2, 1, 1)
+        self.cv2 = Conv(int((2 + n) * c_), c2, k=1, s=1)
 
         ##self.cv2 = Conv((2 + n) * c_, c2, 1, 1)  # corrected to use int kernel/stride
         self.m = nn.ModuleList([
