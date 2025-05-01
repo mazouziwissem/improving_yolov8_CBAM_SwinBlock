@@ -72,38 +72,44 @@
 
 
 
-import torch
 import torch.nn as nn
+import torch
+import torch.nn.functional as F
 
 class CBAM(nn.Module):
-    def __init__(self, channels, reduction=16, kernel_size=7):
-        super(CBAM, self).__init__()
-        # Channel attention
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+    def __init__(self, in_channels=None, reduction_ratio=16, kernel_size=7):
+        super().__init__()
+        self.in_channels = in_channels
+        self.reduction_ratio = reduction_ratio
+        self.kernel_size = kernel_size
+        self.initialized = False
 
+    def _init(self, channels):
         self.shared_mlp = nn.Sequential(
-            nn.Conv2d(channels, channels // reduction, 1, bias=False),
+            nn.Conv2d(channels, channels // self.reduction_ratio, 1, bias=False),
             nn.ReLU(),
-            nn.Conv2d(channels // reduction, channels, 1, bias=False)
+            nn.Conv2d(channels // self.reduction_ratio, channels, 1, bias=False)
         )
         self.sigmoid_channel = nn.Sigmoid()
 
-        # Spatial attention
-        self.conv_spatial = nn.Conv2d(2, 1, kernel_size, padding=kernel_size // 2, bias=False)
+        self.spatial = nn.Conv2d(2, 1, kernel_size=self.kernel_size, padding=self.kernel_size // 2, bias=False)
         self.sigmoid_spatial = nn.Sigmoid()
+        self.initialized = True
 
     def forward(self, x):
+        if not self.initialized:
+            self._init(x.size(1))  # Dynamically initialize
+
         # Channel attention
-        max_out = self.shared_mlp(self.max_pool(x))
-        avg_out = self.shared_mlp(self.avg_pool(x))
+        max_out = self.shared_mlp(F.adaptive_max_pool2d(x, (1, 1)))
+        avg_out = self.shared_mlp(F.adaptive_avg_pool2d(x, (1, 1)))
         channel_att = self.sigmoid_channel(max_out + avg_out)
         x = x * channel_att
 
         # Spatial attention
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         avg_out = torch.mean(x, dim=1, keepdim=True)
-        spatial_att = self.sigmoid_spatial(self.conv_spatial(torch.cat([max_out, avg_out], dim=1)))
+        spatial_att = self.sigmoid_spatial(self.spatial(torch.cat([max_out, avg_out], dim=1)))
         x = x * spatial_att
 
         return x
