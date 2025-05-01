@@ -133,7 +133,7 @@ class SwinBlock(nn.Module):
     def window_partition(self, x):
         B, C, H, W = x.shape
         assert H % self.window_size == 0 and W % self.window_size == 0, \
-            f"Dimensions ({H}x{W}) must be divisible by window_size ({self.window_size})"
+            f"Feature map {H}x{W} must be divisible by window_size {self.window_size}"
         x = x.view(B, C, H//self.window_size, self.window_size, W//self.window_size, self.window_size)
         return rearrange(x, 'b c h wh w ww -> b (h w) (wh ww) c')
 
@@ -151,7 +151,7 @@ class SwinBlock(nn.Module):
         if self.shift:
             x = torch.roll(x, shifts=(self.window_size//2,)*2, dims=(2,3))
         
-        # Attention
+        # Process attention
         shortcut = x
         x = self.norm1(x)
         windows = self.window_partition(x)
@@ -159,7 +159,7 @@ class SwinBlock(nn.Module):
         x = self.window_reverse(attn, H, W)
         x = shortcut + x
         
-        # MLP
+        # Process MLP
         x = x + self.mlp(self.norm2(x))
         
         return x
