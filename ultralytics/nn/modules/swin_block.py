@@ -122,7 +122,7 @@ class SwinBlock(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
-
+        print("Input shape to SwinBlock:", x.shape)  # B, C, H, W
         if self.shift:
             x = torch.roll(x, shifts=(-self.window_size // 2,)*2, dims=(2, 3))
 
