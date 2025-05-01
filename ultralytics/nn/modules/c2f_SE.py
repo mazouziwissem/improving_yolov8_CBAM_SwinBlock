@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
 
-# Squeeze-and-Excitation Block
+from ultralytics.nn.modules.conv import Conv  # Ultralytics custom Conv
+from ultralytics.nn.modules.block import Bottleneck  # Import Bottleneck
+
 class SEBlock(nn.Module):
+    """Squeeze-and-Excitation block."""
     def __init__(self, c, reduction=16):
         super().__init__()
         self.pool = nn.AdaptiveAvgPool2d(1)
@@ -14,46 +17,25 @@ class SEBlock(nn.Module):
         )
 
     def forward(self, x):
-        w = self.pool(x)
-        w = self.fc(w)
-        return x * w
+        return x * self.fc(self.pool(x))
 
 
-# C2f Block with SE integrated
 class C2f_SE(nn.Module):
+    """C2f block with Squeeze-and-Excitation (SE) attention."""
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
-        """
-        c1: input channels
-        c2: output channels
-        n: number of bottlenecks
-        shortcut: use shortcut connections
-        g: number of groups in convolutions
-        e: expansion ratio
-        """
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = nn.Conv2d(c1, 2 * c_, 1, 1, bias=False)
-        self.cv2 = nn.Conv2d((2 + n) * c_, c2, 1, 1, bias=False)
-        self.m = nn.Sequential(*[
+        self.cv1 = Conv(c1, 2 * c_, 1, 1)
+        self.cv2 = Conv((2 + n) * c_, c2, 1, 1)
+        self.m = nn.ModuleList([
             Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)
         ])
         self.se = SEBlock(c2)
 
     def forward(self, x):
         y1, y2 = self.cv1(x).chunk(2, 1)
-        y = [y1, y2] + [self.m(y2)]
-        out = self.cv2(torch.cat(y, 1))
-        return self.se(out)
-
-
-# Supporting bottleneck block used inside C2f
-class Bottleneck(nn.Module):
-    def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):
-        super().__init__()
-        c_ = int(c2 * e)
-        self.cv1 = nn.Conv2d(c1, c_, 1, 1, bias=False)
-        self.cv2 = nn.Conv2d(c_, c2, 3, 1, 1, groups=g, bias=False)
-        self.add = shortcut and c1 == c2
-
-    def forward(self, x):
-        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+        outs = [y1, y2]
+        for i in self.m:
+            y2 = i(y2)
+            outs.append(y2)
+        return self.se(self.cv2(torch.cat(outs, 1)))
