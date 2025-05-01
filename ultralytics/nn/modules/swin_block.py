@@ -60,7 +60,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from einops import rearrange
 
 class WindowAttention(nn.Module):
@@ -69,25 +68,35 @@ class WindowAttention(nn.Module):
         self.dim = dim
         self.ws = window_size
         self.num_heads = num_heads
+        self.head_dim = dim // num_heads
         
         self.qkv = nn.Conv2d(dim, dim * 3, 1)
         self.proj = nn.Conv2d(dim, dim, 1)
-        
-    def forward(self, x):
+        self.scale = self.head_dim ** -0.5
+
+    def forward(self, x, mask=None):
         B, C, H, W = x.shape
         qkv = self.qkv(x).chunk(3, dim=1)
         
-        # Réorganisation en fenêtres
-        q, k, v = map(lambda t: rearrange(t, 'b (h d) (ws1 hh) (ws2 ww) -> b h (hh ww) (ws1 ws2) d', 
-                                        h=self.num_heads, ws1=self.ws, ws2=self.ws), qkv)
+        q, k, v = map(lambda t: rearrange(t, 
+            'b (h d) (ws_h hh) (ws_w ww) -> b h (hh ww) (ws_h ws_w) d',
+            h=self.num_heads, 
+            ws_h=self.ws, 
+            ws_w=self.ws), qkv)
         
-        attn = (q @ k.transpose(-2, -1)) * (1.0 / (C ** 0.5))
-        attn = F.softmax(attn, dim=-1)
-        
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        if mask is not None:
+            attn += mask
+            
+        attn = attn.softmax(dim=-1)
         x = (attn @ v)
-        x = rearrange(x, 'b h (hh ww) (ws1 ws2) d -> b (h d) (hh ws1) (ww ws2)', 
-                    hh=H//self.ws, ws1=self.ws, h=self.num_heads)
         
+        x = rearrange(x, 
+            'b h (hh ww) (ws_h ws_w) d -> b (h d) (hh ws_h) (ww ws_w)',
+            hh=H//self.ws, 
+            ws_h=self.ws,
+            h=self.num_heads)
+            
         return self.proj(x)
 
 class SwinBlock(nn.Module):
@@ -97,8 +106,6 @@ class SwinBlock(nn.Module):
         self.num_heads = num_heads
         self.shift = shift
         
-        assert channels % num_heads == 0, f"Channels {channels} must be divisible by num_heads {num_heads}"
-        
         self.norm1 = nn.BatchNorm2d(channels)
         self.attn = WindowAttention(channels, window_size, num_heads)
         self.norm2 = nn.BatchNorm2d(channels)
@@ -107,9 +114,9 @@ class SwinBlock(nn.Module):
             nn.GELU(),
             nn.Conv2d(channels * 4, channels, 1)
         )
-
+        
         if self.shift:
-            self.register_buffer('attention_mask', self.create_mask(window_size))
+            self.register_buffer('mask', self.create_mask(window_size))
 
     def create_mask(self, window_size):
         mask = torch.zeros(window_size**2, window_size**2)
@@ -120,36 +127,36 @@ class SwinBlock(nn.Module):
                     mask[i*window_size+j, :] = 0
                 else:
                     mask[i*window_size+j, :] = -100
-        return mask.unsqueeze(0)
+        return mask.unsqueeze(0).unsqueeze(0)
 
     def window_partition(self, x):
         B, C, H, W = x.shape
         x = x.view(B, C, H//self.window_size, self.window_size, W//self.window_size, self.window_size)
-        return rearrange(x, 'b c h w1 h w2 -> (b h w) (w1 w2) c')
+        return rearrange(x, 'b c h wh w ww -> b (h w) (wh ww) c')
 
     def window_reverse(self, windows, H, W):
-        B = int(windows.shape[0] / (H * W / self.window_size**2))
-        return rearrange(windows, '(b h w) (w1 w2) c -> b c (h w1) (w w2)', 
-                         b=B, h=H//self.window_size, w1=self.window_size)
+        B = windows.shape[0] // (H * W // self.window_size**2)
+        return rearrange(windows, 
+            'b (h w) (wh ww) c -> b c (h wh) (w ww)',
+            h=H//self.window_size,
+            w=W//self.window_size,
+            wh=self.window_size)
 
     def forward(self, x):
         B, C, H, W = x.shape
         
         if self.shift:
-            x = torch.roll(x, shifts=(self.window_size//2, self.window_size//2), dims=(2,3))
+            x = torch.roll(x, shifts=(self.window_size//2,)*2, dims=(2,3))
         
+        # Attention
         shortcut = x
         x = self.norm1(x)
-        
         windows = self.window_partition(x)
-        if self.shift:
-            attn = self.attn(windows, self.attention_mask)
-        else:
-            attn = self.attn(windows)
-            
+        attn = self.attn(windows, self.mask if self.shift else None)
         x = self.window_reverse(attn, H, W)
-        
         x = shortcut + x
+        
+        # MLP
         x = x + self.mlp(self.norm2(x))
         
         return x
