@@ -62,6 +62,19 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
+def window_partition(x, window_size):
+    B, C, H, W = x.shape
+    x = x.view(B, C, H // window_size, window_size, W // window_size, window_size)
+    x = x.permute(0, 2, 4, 3, 5, 1).reshape(-1, window_size * window_size, C)
+    return x
+
+def window_reverse(windows, window_size, H, W, C):
+    B = int(windows.shape[0] / (H * W / window_size / window_size))
+    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, C)
+    x = x.permute(0, 5, 1, 3, 2, 4).contiguous()
+    x = x.view(B, C, H, W)
+    return x
+
 class WindowAttention(nn.Module):
     def __init__(self, dim, window_size, num_heads):
         super().__init__()
@@ -71,29 +84,26 @@ class WindowAttention(nn.Module):
         self.head_dim = dim // num_heads
         self.scale = self.head_dim ** -0.5
 
-        self.qkv = nn.Conv2d(dim, dim * 3, 1)
-        self.proj = nn.Conv2d(dim, dim, 1)
+        self.qkv = nn.Linear(dim, dim * 3, bias=False)
+        self.proj = nn.Linear(dim, dim)
 
-    def forward(self, x, mask=None):
+    def forward(self, x):
         B, C, H, W = x.shape
-        assert H % self.window_size == 0 and W % self.window_size == 0, \
-            f"H={H}, W={W} doivent être divisibles par window_size={self.window_size}"
+        x = x.permute(0, 2, 3, 1).contiguous().view(B, H * W, C)
+        x = x.view(B, C, H, W)
 
-        qkv = self.qkv(x).reshape(B, 3, self.num_heads, self.head_dim, H, W)
-        q, k, v = qkv[:, 0], qkv[:, 1], qkv[:, 2]
-
-        q = q.flatten(3).transpose(2, 3)  # (B, num_heads, HW, head_dim)
-        k = k.flatten(3).transpose(2, 3)
-        v = v.flatten(3).transpose(2, 3)
+        x_windows = window_partition(x, self.window_size)  # [num_windows*B, ws*ws, C]
+        qkv = self.qkv(x_windows).reshape(-1, self.window_size**2, 3, self.num_heads, self.head_dim)
+        q, k, v = qkv.unbind(2)  # [nW*B, ws*ws, num_heads, head_dim]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
-        if mask is not None:
-            attn += mask
         attn = attn.softmax(dim=-1)
 
-        out = attn @ v
-        out = out.transpose(2, 3).reshape(B, self.dim, H, W)
-        return self.proj(out)
+        out = (attn @ v).transpose(1, 2).reshape(-1, self.window_size**2, self.dim)
+        out = self.proj(out)
+
+        out = window_reverse(out, self.window_size, H, W, self.dim)
+        return out
 
 class SwinBlock(nn.Module):
     def __init__(self, channels, window_size=8, num_heads=4, shift=False):
