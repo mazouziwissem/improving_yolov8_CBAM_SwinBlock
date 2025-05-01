@@ -100,9 +100,9 @@ class WindowAttention(nn.Module):
         return self.proj(x)
 
 class SwinBlock(nn.Module):
-    def __init__(self, base_channels, window_size=8, num_heads=4, shift=False):
+    def __init__(self, channels, window_size=8, num_heads=4, shift=False):
         super().__init__()
-        self.channels = base_channels  # Pas de scale supplémentaire
+        self.channels = channels  # Canaux déjà scaled dans le YAML
         self.window_size = window_size
         self.num_heads = num_heads
         self.shift = shift
