@@ -894,7 +894,11 @@
 # Ultralytics AGPL-3.0 License
 
 # Paramètres
-nc: 1
+# YOLOv8n-C3K2-BrainTumor (No CBAM) - Version finale
+# Ultralytics AGPL-3.0 License
+
+# Paramètres
+nc: 2
 scales:
   n: [0.33, 0.25, 1024]
 
@@ -902,31 +906,31 @@ scales:
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]
   - [-1, 1, Conv, [128, 3, 2]]
-  - [-1, 3, C3K2, [128, 3]]    # [output_channels, num_repeats]
+  - [-1, 3, C3K2, [128]]   # 128 divisible par 8 (2*g=8)
   - [-1, 1, Conv, [256, 3, 2]]
-  - [-1, 6, C3K2, [256, 6]] 
+  - [-1, 6, C3K2, [256]]   # 256 divisible par 8
   - [-1, 1, Conv, [512, 3, 2]]
-  - [-1, 6, C3K2, [512, 6]]
+  - [-1, 6, C3K2, [512]]   # 512 divisible par 8
   - [-1, 1, Conv, [1024, 3, 2]]
-  - [-1, 3, C3K2, [1024, 3]]
+  - [-1, 3, C3K2, [1024]]  # 1024 divisible par 8
   - [-1, 1, SPPF, [1024, 5]]
 
 # Head
 head:
   - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
   - [[-1, 6], 1, Concat, [1]]
-  - [-1, 3, C3K2, [512, 3]]
+  - [-1, 3, C3K2, [512]]   # 512 divisible par 8
   
   - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
   - [[-1, 4], 1, Concat, [1]]
-  - [-1, 3, C3K2, [256, 3]]
+  - [-1, 3, C3K2, [256]]   # 256 divisible par 8
   
   - [-1, 1, Conv, [256, 3, 2]]
   - [[-1, 12], 1, Concat, [1]]
-  - [-1, 3, C3K2, [512, 3]]
+  - [-1, 3, C3K2, [512]]   # 512 divisible par 8
   
   - [-1, 1, Conv, [512, 3, 2]]
   - [[-1, 9], 1, Concat, [1]]
-  - [-1, 3, C3K2, [1024, 3]]
+  - [-1, 3, C3K2, [1024]]  # 1024 divisible par 8
   
   - [[15, 18, 21], 1, Detect, [nc]]
