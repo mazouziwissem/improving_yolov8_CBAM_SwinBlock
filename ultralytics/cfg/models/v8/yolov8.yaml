@@ -938,8 +938,6 @@
 
 #   - [[20, 23, 26], 1, Detect, [nc]]              # 27 - Detection head
 
-#ajout cbam avant swinblock dans backbone 
-
 nc: 1  # Number of classes
 
 scales:
@@ -949,7 +947,8 @@ scales:
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
 
-# Backbone with added CBAM and SwinBlock
+# Backbone with added CBAM at P4 and SwinBlock after P5
+
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
   - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
@@ -962,11 +961,10 @@ backbone:
   - [-1, 1, SwinBlock, [128]]         # 8 - SwinBlock with 512 channels
   - [-1, 1, Conv, [1024, 3, 2]]       # 9-P5/32
   - [-1, 3, C2f, [1024, True]]        # 10
-  - [-1, 1, SwinBlock, [128]]         # 11 - SwinBlock before CBAM at P5
-  - [-1, 1, CBAM, []]                 # 12 - CBAM at P5
+  - [-1, 1, CBAM, []]                 # 11 - CBAM at P5
+  - [-1, 1, SwinBlock, [256]]         # 12 - SwinBlock after CBAM at P5
   - [-1, 1, SPPF, [1024, 5]]          # 13
 
-# Head configuration
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 14
   - [[-1, 8], 1, Concat, [1]]                     # 15
@@ -987,4 +985,3 @@ head:
   - [-1, 3, C2f, [1024]]                          # 27
 
   - [[21, 24, 27], 1, Detect, [nc]]              # 28 - Detection head
-
