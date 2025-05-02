@@ -889,12 +889,7 @@
 
 #=====================================================
 
-
-# YOLOv8n-C3K2-BrainTumor (No CBAM) - Version finale
-# Ultralytics AGPL-3.0 License
-
-# Paramètres
-# YOLOv8n-C3K2-BrainTumor (No CBAM) - Version finale
+# YOLOv8n-C3K2-BrainTumor (Version finale fonctionnelle)
 # Ultralytics AGPL-3.0 License
 
 # Paramètres
@@ -904,33 +899,33 @@ scales:
 
 # Backbone
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]
-  - [-1, 1, Conv, [128, 3, 2]]
-  - [-1, 3, C3K2, [128]]   # 128 divisible par 8 (2*g=8)
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [-1, 6, C3K2, [256]]   # 256 divisible par 8
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [-1, 6, C3K2, [512]]   # 512 divisible par 8
-  - [-1, 1, Conv, [1024, 3, 2]]
-  - [-1, 3, C3K2, [1024]]  # 1024 divisible par 8
-  - [-1, 1, SPPF, [1024, 5]]
+  - [-1, 1, Conv, [64, 3, 2]]        # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]       # 1-P2/4
+  - [-1, 3, C3K2, [128, 3]]          # 2 (c2=128, n=3)
+  - [-1, 1, Conv, [256, 3, 2]]       # 3-P3/8
+  - [-1, 6, C3K2, [256, 6]]          # 4 (c2=256, n=6)
+  - [-1, 1, Conv, [512, 3, 2]]       # 5-P4/16
+  - [-1, 6, C3K2, [512, 6]]          # 6 (c2=512, n=6)
+  - [-1, 1, Conv, [1024, 3, 2]]      # 7-P5/32
+  - [-1, 3, C3K2, [1024, 3]]         # 8 (c2=1024, n=3)
+  - [-1, 1, SPPF, [1024, 5]]         # 9
 
 # Head
 head:
   - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 6], 1, Concat, [1]]
-  - [-1, 3, C3K2, [512]]   # 512 divisible par 8
+  - [[-1, 6], 1, Concat, [1]]        # Concat P4
+  - [-1, 3, C3K2, [512, 3]]          # 12 (c2=512, n=3)
   
   - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 4], 1, Concat, [1]]
-  - [-1, 3, C3K2, [256]]   # 256 divisible par 8
+  - [[-1, 4], 1, Concat, [1]]        # Concat P3
+  - [-1, 3, C3K2, [256, 3]]          # 15 (P3/8)
   
   - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 12], 1, Concat, [1]]
-  - [-1, 3, C3K2, [512]]   # 512 divisible par 8
+  - [[-1, 12], 1, Concat, [1]]       # Concat P4
+  - [-1, 3, C3K2, [512, 3]]          # 18 (P4/16)
   
   - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 9], 1, Concat, [1]]
-  - [-1, 3, C3K2, [1024]]  # 1024 divisible par 8
+  - [[-1, 9], 1, Concat, [1]]        # Concat P5
+  - [-1, 3, C3K2, [1024, 3]]         # 21 (P5/32)
   
-  - [[15, 18, 21], 1, Detect, [nc]]
+  - [[15, 18, 21], 1, Detect, [nc]]  # Detect
