@@ -1,30 +1,25 @@
 import torch
 import torch.nn as nn
 
+
+
 class C3K2(nn.Module):
-    """Lightweight C3 block with kernel factorization for medical imaging"""
     def __init__(self, c1, c2, n=1, shortcut=True, g=4):
         super().__init__()
-        self.c = c2 // 2  # Split channels
-        self.cv1 = nn.Conv2d(c1, 2*self.c, 1, 1, bias=False)
-        self.cv2 = nn.Conv2d(c1, 2*self.c, 1, 1, bias=False)
+        c_ = int(c2 // 2)  # Conversion explicite
         
-        # Depthwise separable convolutions with kernel factorization
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
         self.m = nn.Sequential(*[
             nn.Sequential(
-                # Grouped spatial convolution (K=3)
-                nn.Conv2d(self.c, self.c, 3, 1, 1, groups=g, bias=False),
-                # Pointwise convolution (K=1)
-                nn.Conv2d(self.c, self.c, 1, 1, 0, bias=False),
-                nn.BatchNorm2d(self.c),
-                nn.SiLU()
+                Conv(c_, c_, 3, 1, g=g),
+                Conv(c_, c_, 1, 1)
             ) for _ in range(n)])
         
-        self.cv3 = nn.Conv2d(2*self.c, c2, 1, 1, bias=False)
+        self.cv3 = Conv(2 * c_, c2, 1)
 
     def forward(self, x):
-        x1, x2 = self.cv1(x).chunk(2, 1)
         return self.cv3(torch.cat((
-            self.m(x1),
-            self.cv2(x2)
+            self.m(self.cv1(x)),
+            self.cv2(x)
         ), 1))
