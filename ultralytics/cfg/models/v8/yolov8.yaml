@@ -1364,31 +1364,30 @@
 # YOLOv8n with Enhanced Bottleneck Transformer (Fixed Channels)
 # Ultralytics 🚀 AGPL-3.0 License
 
+# YOLOv8n with Width-Scaled Bottleneck Transformer
+# Ultralytics 🚀 AGPL-3.0 License
+
 # Parameters
 nc: 1  # number of classes
 scales:
-  n: [0.33, 0.25, 1024]
-  s: [0.33, 0.50, 1024]
-  m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
+  n: [0.33, 0.25, 1024]  # [depth, width, max_channels]
 
-# Backbone (Fixed Channel Progression)
+# Backbone (Width-Scale Aware)
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4
+  - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2 (64*0.25=16)
+  - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4 (128*0.25=32)
   - [-1, 3, C2f, [128, True]]          # 2
-  - [-1, 1, Conv, [256, 3, 2]]         # 3-P3/8
+  - [-1, 1, Conv, [256, 3, 2]]         # 3-P3/8 (256*0.25=64)
   - [-1, 6, C2f, [256, True]]          # 4
-  - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16
+  - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16 (512*0.25=128)
   - [-1, 6, C2f, [512, True]]          # 6
-  - [-1, 1, BottleneckTransformer, [512, 8, 8]]  # 7 Fixed input channels (matches previous layer)
-  - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
+  - [-1, 1, BottleneckTransformer, [128, 8, 8]]  # 7 SCALED input (128=512*0.25)
+  - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32 (1024*0.25=256)
   - [-1, 3, C2f, [1024, True]]         # 9
   - [-1, 1, SPPF, [1024, 5]]           # 10
 
-# Head (Same as before)
+# Head (Same structure as before)
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
   - [[-1, 6], 1, Concat, [1]]
@@ -1424,4 +1423,3 @@ loss:
   box: 8.5
   cls: 0.8
   dfl: 1.6
-
