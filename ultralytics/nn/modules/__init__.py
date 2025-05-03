@@ -109,7 +109,7 @@ from .transformer import (
 # from .gam import GAM
 
 # In your model definition file, register these classes:
-from new_modules import (
+from .new_modules import (
     C2f, 
     CBAM, 
     CoordAttention, 

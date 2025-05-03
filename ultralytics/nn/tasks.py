@@ -26,6 +26,8 @@ globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
 globals()['CoordAttention'] = CoordAttention
 globals()['ASPP'] = ASPP
+globals()['C2f'] = C2f
+
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
     AIFI,
