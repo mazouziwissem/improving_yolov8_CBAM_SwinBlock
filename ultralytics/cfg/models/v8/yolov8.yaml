@@ -1361,6 +1361,10 @@
 # Ultralytics 🚀 AGPL-3.0 License
 
 # Parameters
+# YOLOv8n with Enhanced Bottleneck Transformer (Fixed Channels)
+# Ultralytics 🚀 AGPL-3.0 License
+
+# Parameters
 nc: 1  # number of classes
 scales:
   n: [0.33, 0.25, 1024]
@@ -1369,7 +1373,7 @@ scales:
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
 
-# Backbone
+# Backbone (Fixed Channel Progression)
 backbone:
   # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
@@ -1379,28 +1383,28 @@ backbone:
   - [-1, 6, C2f, [256, True]]          # 4
   - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16
   - [-1, 6, C2f, [512, True]]          # 6
-  - [-1, 1, BottleneckTransformer, [256, 8, 8]]  # 7 Enhanced Transformer
+  - [-1, 1, BottleneckTransformer, [512, 8, 8]]  # 7 Fixed input channels (matches previous layer)
   - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
   - [-1, 3, C2f, [1024, True]]         # 9
   - [-1, 1, SPPF, [1024, 5]]           # 10
 
-# Head
+# Head (Same as before)
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 11
-  - [[-1, 6], 1, Concat, [1]]                  # 12
-  - [-1, 3, C2f, [512, True]]                  # 13 (shortcut=True)
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 14
-  - [[-1, 4], 1, Concat, [1]]                  # 15
-  - [-1, 3, C2f, [256, True]]                  # 16 (shortcut=True)
-  - [-1, 1, Conv, [256, 3, 2]]                 # 17
-  - [[-1, 13], 1, Concat, [1]]                 # 18
-  - [-1, 3, C2f, [512, True]]                  # 19 (shortcut=True)
-  - [-1, 1, Conv, [512, 3, 2]]                 # 20
-  - [[-1, 10], 1, Concat, [1]]                 # 21
-  - [-1, 3, C2f, [1024, True]]                 # 22 (shortcut=True)
-  - [[16, 19, 22], 1, Detect, [nc]]            # 23 Detect(P3, P4, P5)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 6], 1, Concat, [1]]
+  - [-1, 3, C2f, [512, True]]
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 4], 1, Concat, [1]]
+  - [-1, 3, C2f, [256, True]]
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [[-1, 13], 1, Concat, [1]]
+  - [-1, 3, C2f, [512, True]]
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [[-1, 10], 1, Concat, [1]]
+  - [-1, 3, C2f, [1024, True]]
+  - [[16, 19, 22], 1, Detect, [nc]]
 
-# Training Hyperparameters
+# Training Hyperparameters (Same as before)
 augmentation:
   hsv_h: 0.015
   hsv_s: 0.7
@@ -1421,10 +1425,3 @@ loss:
   cls: 0.8
   dfl: 1.6
 
-# Training Configuration
-task: detect
-mode: train
-batch: 64
-imgsz: 640
-epochs: 200
-close_mosaic: 10
