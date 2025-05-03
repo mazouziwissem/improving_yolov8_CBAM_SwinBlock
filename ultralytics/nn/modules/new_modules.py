@@ -7,12 +7,11 @@ from ultralytics.nn.modules.block import Bottleneck  # For SwinBlock
 
 # --------------------- 1. Attention Modules ---------------------
 class CBAM(nn.Module):
-    """CBAM with YOLOv8-compatible parameters"""
-    def __init__(self, c1, c2=None, reduction=16):  # Accept c1 and optional c2
+    def __init__(self, c1, c2=None, reduction=16):
         super().__init__()
         self.channels = c1
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.max_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(c1, c1 // reduction),
             nn.ReLU(),
@@ -21,17 +20,17 @@ class CBAM(nn.Module):
         self.conv = nn.Conv2d(2, 1, kernel_size=7, padding=3)
 
     def forward(self, x):
-        # Channel attention
-        avg_out = self.fc(self.avg_pool(x).squeeze())
-        max_out = self.fc(self.max_pool(x).squeeze())
-        channel = torch.sigmoid(avg_out + max_out).unsqueeze(-1).unsqueeze(-1)
-        
-        # Spatial attention
+        b, c, _, _ = x.size()
+        avg_out = self.fc(self.avg_pool(x).view(b, c))
+        max_out = self.fc(self.max_pool(x).view(b, c))
+        channel = torch.sigmoid(avg_out + max_out).view(b, c, 1, 1)
+
         avg_out = torch.mean(x, dim=1, keepdim=True)
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         spatial = torch.sigmoid(self.conv(torch.cat([avg_out, max_out], dim=1)))
-        
+
         return x * channel * spatial
+
 
 class CoordAttention(nn.Module):
     """Coordinate Attention (from CA-Net)"""
