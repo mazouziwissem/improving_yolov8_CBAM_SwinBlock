@@ -1361,58 +1361,51 @@
 # # Modifications: CBAM attention, 4th detection head, K-means anchors, BiFPN-inspired neck
 
 # Parameters
-nc: 1 # MODIFIED: Number of classes (tumor, background)
+nc: 1  # MODIFIED: Number of classes (tumor, background)
 scales:
   n: [0.33, 0.25, 1024]  # YOLOv8n scaling
 
 # Backbone with CBAM Attention
 backbone:
-  # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]  # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]  # 1-P2/4
-  - [-1, 3, C2f, [128, True]]
-  - [-1, 1, CBAM, []]  # ADDED: CBAM after C2f
-  - [-1, 1, Conv, [256, 3, 2]]  # 3-P3/8
-  - [-1, 6, C2f, [256, True]]
-  - [-1, 1, CBAM, []]  # ADDED
-  - [-1, 1, Conv, [512, 3, 2]]  # 5-P4/16
-  - [-1, 6, C2f, [512, True]]
-  - [-1, 1, CBAM, []]  # ADDED
-  - [-1, 1, Conv, [1024, 3, 2]]  # 7-P5/32
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, CBAM, []]  # ADDED
-  - [-1, 1, SPPF, [1024, 5]]  # 9
+  - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4
+  - [-1, 3, C2f, [128, True]]          # 2
+  - [-1, 1, CBAM, []]                  # 3
+  - [-1, 1, Conv, [256, 3, 2]]         # 4-P3/8
+  - [-1, 6, C2f, [256, True]]          # 5
+  - [-1, 1, CBAM, []]                  # 6
+  - [-1, 1, Conv, [512, 3, 2]]         # 7-P4/16
+  - [-1, 6, C2f, [512, True]]          # 8
+  - [-1, 1, CBAM, []]                  # 9
+  - [-1, 1, Conv, [1024, 3, 2]]        # 10-P5/32
+  - [-1, 3, C2f, [1024, True]]         # 11
+  - [-1, 1, CBAM, []]                  # 12
+  - [-1, 1, SPPF, [1024, 5]]           # 13
 
-head:
-  # Partie supérieure (P5 -> P4)
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 9], 1, Concat, [1]]  # Concaténer avec la couche 9 (sortie SPPF: 1024 canaux)
-  - [-1, 3, C2f, [512]]  # 12 (512 canaux)
+# Head
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 14
+  - [[-1, 9], 1, Concat, [1]]                    # 15 (concat SPPF upsampled + CBAM(P4))
+  - [-1, 3, C2f, [512]]                          # 16
 
-  # P4 -> P3
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 6], 1, Concat, [1]]  # Concaténer avec la couche 6 (C2f: 256 canaux)
-  - [-1, 3, C2f, [256]]  # 15 (256 canaux)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 17
+  - [[-1, 6], 1, Concat, [1]]                    # 18 (concat avec CBAM(P3))
+  - [-1, 3, C2f, [256]]                          # 19
 
-  # P3 -> P2 (nouvelle couche pour petits objets)
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 3], 1, Concat, [1]]  # Concaténer avec la couche 3 (C2f: 128 canaux)
-  - [-1, 3, C2f, [128]]  # 18 (128 canaux)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]   # 20
+  - [[-1, 3], 1, Concat, [1]]                    # 21 (concat avec CBAM(P2))
+  - [-1, 3, C2f, [128]]                          # 22
 
-  # P2 -> P3 (downsample)
-  - [-1, 1, Conv, [128, 3, 2]]
-  - [[-1, 15], 1, Concat, [1]]  # Fusionner avec P3 (256 canaux)
-  - [-1, 3, C2f, [256]]  # 21 (256 canaux)
+  - [-1, 1, Conv, [128, 3, 2]]                   # 23
+  - [[-1, 19], 1, Concat, [1]]                   # 24 (vers P3)
+  - [-1, 3, C2f, [256]]                          # 25
 
-  # P3 -> P4 (downsample)
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 12], 1, Concat, [1]]  # Fusionner avec P4 (512 canaux)
-  - [-1, 3, C2f, [512]]  # 24 (512 canaux)
+  - [-1, 1, Conv, [256, 3, 2]]                   # 26
+  - [[-1, 16], 1, Concat, [1]]                   # 27 (vers P4)
+  - [-1, 3, C2f, [512]]                          # 28
 
-  # P4 -> P5 (downsample)
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 9], 1, Concat, [1]]  # Fusionner avec P5 (1024 canaux)
-  - [-1, 3, C2f, [1024]]  # 27 (1024 canaux)
+  - [-1, 1, Conv, [512, 3, 2]]                   # 29
+  - [[-1, 13], 1, Concat, [1]]                   # 30 (vers P5)
+  - [-1, 3, C2f, [1024]]                         # 31
 
-  # Couches de détection
-  - [[18, 21, 24, 27], 1, Detect, [nc]]  # P2(128), P3(256), P4(512), P5(1024)
+# Detect heads
+  - [[22, 25, 28, 31], 1, Detect, [nc]]          # Detect on P2, P3, P4, P5
