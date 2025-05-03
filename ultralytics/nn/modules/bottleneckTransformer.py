@@ -40,74 +40,54 @@ import torch.nn.functional as F
 #         out = out.permute(0, 2, 1).view(B, C, H, W)
 #         return out
 
+
+
 class BottleneckTransformer(nn.Module):
-    def __init__(self, dim, heads=4, dim_head=64):
+    """
+    Simplified Bottleneck Transformer module for YOLOv8
+    """
+    def __init__(self, c1, heads=4, dim_head=64, dropout=0.1):
         super().__init__()
-        inner_dim = dim_head * heads
-        self.inner_dim = inner_dim
+        self.c1 = c1  # input channels
         self.heads = heads
-        self.scale = dim_head ** -0.5
+        self.dim_head = dim_head
+        inner_dim = heads * dim_head
         
-        # Input projection - this needs to match the input channel size
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
-        
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(0.1)
+        # Simple implementation with LayerNorm and attention
+        self.norm = nn.LayerNorm(c1)
+        self.attention = nn.MultiheadAttention(
+            embed_dim=c1,
+            num_heads=heads,
+            dropout=dropout,
+            batch_first=True
         )
         
-        # Layer normalization for input
-        self.norm1 = nn.LayerNorm(dim)
-        self.norm2 = nn.LayerNorm(dim)
-        
-        # MLP block
+        # Simple feedforward network
         self.mlp = nn.Sequential(
-            nn.Linear(dim, dim * 2),
+            nn.Linear(c1, c1 * 2),
             nn.GELU(),
-            nn.Linear(dim * 2, dim),
-            nn.Dropout(0.1)
+            nn.Dropout(dropout),
+            nn.Linear(c1 * 2, c1),
+            nn.Dropout(dropout)
         )
-        
-        # Optional: spatial positional encoding
-        self.pos_embed = nn.Parameter(torch.zeros(1, 1, dim))
         
     def forward(self, x):
-        # Input shape: [B, C, H, W]
         B, C, H, W = x.shape
         
-        # Reshape and transpose to [B, HW, C]
-        x_flat = x.view(B, C, H * W).permute(0, 2, 1)  # [B, HW, C]
+        # Reshape to sequence for attention [B, HW, C]
+        x_seq = x.flatten(2).transpose(1, 2)
         
-        # Add positional embedding
-        x_flat = x_flat + self.pos_embed
+        # First residual block: LayerNorm + Attention
+        residual = x_seq
+        x_norm = self.norm(x_seq)
+        attn_out, _ = self.attention(x_norm, x_norm, x_norm)
+        x_seq = residual + attn_out
         
-        # Apply layer norm
-        x_norm = self.norm1(x_flat)
+        # Second residual block: LayerNorm + MLP
+        residual = x_seq
+        x_seq = residual + self.mlp(self.norm(x_seq))
         
-        # Self-attention
-        qkv = self.to_qkv(x_norm).chunk(3, dim=-1)
-        q, k, v = map(lambda t: t.view(B, H * W, self.heads, -1).transpose(1, 2), qkv)
+        # Reshape back to feature map [B, C, H, W]
+        x = x_seq.transpose(1, 2).reshape(B, C, H, W)
         
-        # Attention computation
-        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-        attn = dots.softmax(dim=-1)
-        
-        # Apply attention to values
-        out = torch.matmul(attn, v).transpose(1, 2)
-        out = out.reshape(B, H * W, self.inner_dim)
-        out = self.to_out(out)
-        
-        # First residual connection
-        x_res = x_flat + out
-        
-        # Second norm and MLP
-        y = self.norm2(x_res)
-        y = self.mlp(y)
-        
-        # Second residual connection
-        out = x_res + y
-        
-        # Reshape back to [B, C, H, W]
-        out = out.permute(0, 2, 1).view(B, C, H, W)
-        
-        return out
+        return x
