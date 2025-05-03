@@ -7,18 +7,17 @@ from ultralytics.nn.modules.block import Bottleneck  # For SwinBlock
 
 # --------------------- 1. Attention Modules ---------------------
 class CBAM(nn.Module):
-    """Convolutional Block Attention Module (CBAM)"""
-    def __init__(self, channels, reduction=16):
+    """CBAM with YOLOv8-compatible parameters"""
+    def __init__(self, c1, c2=None, reduction=16):  # Accept c1 and optional c2
         super().__init__()
-        # Channel attention
+        self.channels = c1
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(channels, channels // reduction),
+            nn.Linear(c1, c1 // reduction),
             nn.ReLU(),
-            nn.Linear(channels // reduction, channels)
+            nn.Linear(c1 // reduction, c1)
         )
-        # Spatial attention
         self.conv = nn.Conv2d(2, 1, kernel_size=7, padding=3)
 
     def forward(self, x):
