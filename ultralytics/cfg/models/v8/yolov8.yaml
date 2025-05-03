@@ -1280,7 +1280,7 @@ backbone:
   - [-1, 1, Conv, [1024, 3, 2]]       # 11-P5/32
   - [-1, 3, C2f, [1024, True]]        # 12
   - [-1, 1, CBAM, []]                 # 13 - CBAM after P5
-  - [-1, 1, SPD, [256, 1024]]         # 14 - Adjust input channels for SPD
+  - [-1, 1, SPD, [1024, 1024]]         # 14 - Adjust input channels for SPD
   - [-1, 1, SPPF, [1024, 5]]          # 15
 
 # Head (standard YOLOv8 head)
