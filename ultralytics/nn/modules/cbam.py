@@ -76,12 +76,11 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, reduction_ratio=4):  # Réduction ratio=4 au lieu de 16
+    def __init__(self, in_planes, reduction_ratio=2):  # Réduction ratio=2 au lieu de 4
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         
-        # Garantit que hidden_size ≥ 1
         hidden_size = max(1, in_planes // reduction_ratio)
         
         self.fc1 = nn.Conv2d(in_planes, hidden_size, kernel_size=1, bias=False)
