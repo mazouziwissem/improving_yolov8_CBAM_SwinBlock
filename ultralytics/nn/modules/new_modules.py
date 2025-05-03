@@ -7,28 +7,35 @@ from ultralytics.nn.modules.block import Bottleneck  # For SwinBlock
 
 # --------------------- 1. Attention Modules ---------------------
 class CBAM(nn.Module):
-    def __init__(self, c1, c2=None, reduction=16):
+    """Fixed CBAM with proper dimension handling"""
+    def __init__(self, c1, reduction=16):
         super().__init__()
         self.channels = c1
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        
+        # Channel attention
         self.fc = nn.Sequential(
             nn.Linear(c1, c1 // reduction),
             nn.ReLU(),
             nn.Linear(c1 // reduction, c1)
         )
+        
+        # Spatial attention
         self.conv = nn.Conv2d(2, 1, kernel_size=7, padding=3)
 
     def forward(self, x):
+        # Channel attention
         b, c, _, _ = x.size()
         avg_out = self.fc(self.avg_pool(x).view(b, c))
         max_out = self.fc(self.max_pool(x).view(b, c))
         channel = torch.sigmoid(avg_out + max_out).view(b, c, 1, 1)
-
+        
+        # Spatial attention
         avg_out = torch.mean(x, dim=1, keepdim=True)
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         spatial = torch.sigmoid(self.conv(torch.cat([avg_out, max_out], dim=1)))
-
+        
         return x * channel * spatial
 
 
