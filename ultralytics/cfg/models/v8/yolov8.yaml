@@ -1097,49 +1097,106 @@
 
 #=======================================================================GAM
 
-# YOLOv8 model with GAM (Global Attention Mechanism)
+# # YOLOv8 model with GAM (Global Attention Mechanism)
 
+# nc: 1  # number of classes
+
+# scales:
+#   n: [0.33, 0.25, 1024]
+#   s: [0.33, 0.50, 1024]
+#   m: [0.67, 0.75, 768]
+#   l: [1.00, 1.00, 512]
+#   x: [1.00, 1.25, 512]
+
+# backbone:
+#   - [-1, 1, Conv, [64, 3, 2]]        # 0 P1/2
+#   - [-1, 1, Conv, [128, 3, 2]]       # 1 P2/4
+#   - [-1, 3, C2f, [128, True]]        # 2
+#   - [-1, 1, Conv, [256, 3, 2]]       # 3 P3/8
+#   - [-1, 6, C2f, [256, True]]        # 4
+#   - [-1, 1, GAM, []]                 # 5 GAM at P3
+#   - [-1, 1, Conv, [512, 3, 2]]       # 6 P4/16
+#   - [-1, 6, C2f, [512, True]]        # 7
+#   - [-1, 1, GAM, []]                 # 8 GAM at P4
+#   - [-1, 1, Conv, [1024, 3, 2]]      # 9 P5/32
+#   - [-1, 3, C2f, [1024, True]]       # 10
+#   - [-1, 1, GAM, []]                 # 11 GAM at P5
+#   - [-1, 1, SPPF, [1024, 5]]         # 12
+
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+#   - [[-1, 8], 1, Concat, [1]]                   # 14
+#   - [-1, 3, C2f, [512]]                         # 15
+#   - [-1, 1, GAM, []]                            # 16 GAM at head stage
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 17
+#   - [[-1, 4], 1, Concat, [1]]                   # 18
+#   - [-1, 3, C2f, [256]]                         # 19
+#   - [-1, 1, GAM, []]                            # 20 GAM at head stage
+
+#   - [-1, 1, Conv, [256, 3, 2]]                  # 21
+#   - [[-1, 15], 1, Concat, [1]]                  # 22
+#   - [-1, 3, C2f, [512]]                         # 23
+
+#   - [-1, 1, Conv, [512, 3, 2]]                  # 24
+#   - [[-1, 10], 1, Concat, [1]]                  # 25
+#   - [-1, 3, C2f, [1024]]                        # 26
+
+#   - [[20, 23, 26], 1, Detect, [nc]]             # 27
+
+
+
+#=========================================================
+
+# Parameters
 nc: 1  # number of classes
-
 scales:
   n: [0.33, 0.25, 1024]
   s: [0.33, 0.50, 1024]
   m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
+  l: [1.00, 1.25, 640]  # Increased width scaling
+  x: [1.25, 1.50, 512]  # Enhanced capacity
 
+# Backbone with improved attention flow
 backbone:
-  - [-1, 1, Conv, [64, 3, 2]]        # 0 P1/2
-  - [-1, 1, Conv, [128, 3, 2]]       # 1 P2/4
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]       # 1-P2/4
   - [-1, 3, C2f, [128, True]]        # 2
-  - [-1, 1, Conv, [256, 3, 2]]       # 3 P3/8
-  - [-1, 6, C2f, [256, True]]        # 4
-  - [-1, 1, GAM, []]                 # 5 GAM at P3
-  - [-1, 1, Conv, [512, 3, 2]]       # 6 P4/16
-  - [-1, 6, C2f, [512, True]]        # 7
-  - [-1, 1, GAM, []]                 # 8 GAM at P4
-  - [-1, 1, Conv, [1024, 3, 2]]      # 9 P5/32
-  - [-1, 3, C2f, [1024, True]]       # 10
-  - [-1, 1, GAM, []]                 # 11 GAM at P5
-  - [-1, 1, SPPF, [1024, 5]]         # 12
+  - [-1, 1, CBAM, []]                # 3 - Early attention
+  - [-1, 1, Conv, [256, 3, 2]]       # 4-P3/8
+  - [-1, 6, C2f, [256, True]]        # 5
+  - [-1, 1, CoordAttention, [128]]   # 6 - Dual attention
+  - [-1, 1, Conv, [512, 3, 2]]       # 7-P4/16
+  - [-1, 8, C2f, [512, True]]        # 8 - Deeper block
+  - [-1, 1, SwinBlock, [256]]        # 9 - Swin with more channels
+  - [-1, 1, SPPF, [512, 5]]          # 10 - Multi-scale processing
+  - [-1, 1, Conv, [1024, 3, 2]]      # 11-P5/32
+  - [-1, 6, C2f, [1024, True]]       # 12
+  - [-1, 1, CBAM, []]                # 13 - Late attention
+  - [-1, 1, ASPP, [1024]]            # 14 - Atrous spatial pyramid pooling
 
+# Enhanced Head with BiFPN-like connections
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
-  - [[-1, 8], 1, Concat, [1]]                   # 14
-  - [-1, 3, C2f, [512]]                         # 15
-  - [-1, 1, GAM, []]                            # 16 GAM at head stage
-
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 17
-  - [[-1, 4], 1, Concat, [1]]                   # 18
-  - [-1, 3, C2f, [256]]                         # 19
-  - [-1, 1, GAM, []]                            # 20 GAM at head stage
-
-  - [-1, 1, Conv, [256, 3, 2]]                  # 21
-  - [[-1, 15], 1, Concat, [1]]                  # 22
-  - [-1, 3, C2f, [512]]                         # 23
-
-  - [-1, 1, Conv, [512, 3, 2]]                  # 24
-  - [[-1, 10], 1, Concat, [1]]                  # 25
-  - [-1, 3, C2f, [1024]]                        # 26
-
-  - [[20, 23, 26], 1, Detect, [nc]]             # 27
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 15
+  - [[-1, 9], 1, Concat, [1]]                    # 16
+  - [-1, 4, C2f, [512]]                          # 17 - Deeper processing
+  - [-1, 1, SwinBlock, [256]]                    # 18
+  - [-1, 1, CoordAttention, [128]]               # 19
+  
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]    # 20
+  - [[-1, 5], 1, Concat, [1]]                    # 21
+  - [-1, 4, C2f, [256]]                          # 22
+  - [-1, 1, SwinBlock, [128]]                    # 23
+  - [-1, 1, CBAM, []]                            # 24
+  
+  - [-1, 1, Conv, [256, 3, 2]]                   # 25
+  - [[-1, 18], 1, Concat, [1]]                   # 26
+  - [-1, 4, C2f, [512]]                          # 27
+  - [-1, 1, ASPP, [512]]                         # 28
+  
+  - [-1, 1, Conv, [512, 3, 2]]                   # 29
+  - [[-1, 14], 1, Concat, [1]]                   # 30
+  - [-1, 6, C2f, [1024]]                         # 31 - Strong final processing
+  - [-1, 1, CBAM, []]                            # 32
+  
+  - [[22, 27, 31], 1, Detect, [nc]] # 33 - Optimized anchors

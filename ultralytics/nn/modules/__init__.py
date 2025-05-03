@@ -103,10 +103,19 @@ from .transformer import (
     TransformerLayer,
 )
 
-from .swin_block import SwinBlock
-from .cbam import CBAM
-from .coordAttention import CoordAttention
-from .gam import GAM
+# from .swin_block import SwinBlock
+# from .cbam import CBAM
+# from .coordAttention import CoordAttention
+# from .gam import GAM
+
+# In your model definition file, register these classes:
+from new_modules import (
+    C2f, 
+    CBAM, 
+    CoordAttention, 
+    SwinBlock, 
+    ASPP
+)
 __all__ = (
     "Conv",
     "Conv2",
@@ -184,10 +193,15 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
-    "SwinBlock",
-    "CBAM",
+    #SwinBlock",
+   #"CBAM",
     "CoordAttention",
     "GAM",
+    "C2f", 
+    "CBAM", 
+    "CoordAttention", 
+    "SwinBlock", 
+    "ASPP",
 
 )
 
