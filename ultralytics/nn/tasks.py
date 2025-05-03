@@ -14,20 +14,21 @@ import torch.nn as nn
 # from ultralytics.nn.modules.c3k2 import C3K2 
 # from ultralytics.nn.modules.coordAttention import CoordAttention
 # from ultralytics.nn.modules.gam import GAM
-from ultralytics.nn.modules.new_modules import (
-    C2f, 
-    CBAM, 
-    CoordAttention, 
-    SwinBlock, 
-    ASPP
-)
+# from ultralytics.nn.modules.new_modules import (
+#     C2f, 
+#     CBAM, 
+#     CoordAttention, 
+#     SwinBlock, 
+#     ASPP
+# )
 # globals()['GAM'] = GAM
-globals()['SwinBlock'] = SwinBlock
-globals()['CBAM'] = CBAM
-globals()['CoordAttention'] = CoordAttention
-globals()['ASPP'] = ASPP
-globals()['C2f'] = C2f
-
+# globals()['SwinBlock'] = SwinBlock
+# globals()['CBAM'] = CBAM
+# globals()['CoordAttention'] = CoordAttention
+# globals()['ASPP'] = ASPP
+# globals()['C2f'] = C2f
+from ultralytics.nn.modules.bottleneckTransformer import BottleneckTransformer
+globals()['BottleneckTransformer'] = BottleneckTransformer
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
     AIFI,

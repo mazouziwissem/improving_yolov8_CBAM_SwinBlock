@@ -108,14 +108,8 @@ from .transformer import (
 # from .coordAttention import CoordAttention
 # from .gam import GAM
 
-# In your model definition file, register these classes:
-from .new_modules import (
-    C2f, 
-    CBAM, 
-    CoordAttention, 
-    SwinBlock, 
-    ASPP
-)
+from .bottleneckTransformer import BottleneckTransformer
+
 __all__ = (
     "Conv",
     "Conv2",
@@ -195,13 +189,7 @@ __all__ = (
     "A2C2f",
     #SwinBlock",
    #"CBAM",
-    "CoordAttention",
-    "GAM",
-    "C2f", 
-    "CBAM", 
-    "CoordAttention", 
-    "SwinBlock", 
-    "ASPP",
+    "BottleneckTransformer",
 
 )
 
