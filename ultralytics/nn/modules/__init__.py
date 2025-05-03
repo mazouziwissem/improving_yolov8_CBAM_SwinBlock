@@ -106,6 +106,7 @@ from .transformer import (
 from .swin_block import SwinBlock
 from .cbam import CBAM
 from .coordAttention import CoordAttention
+from .gam import GAM
 __all__ = (
     "Conv",
     "Conv2",
@@ -186,7 +187,7 @@ __all__ = (
     "SwinBlock",
     "CBAM",
     "CoordAttention",
-    
+    "GAM",
 
 )
 

@@ -13,6 +13,8 @@ from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
 from ultralytics.nn.modules.c3k2 import C3K2 
 from ultralytics.nn.modules.coordAttention import CoordAttention
+from ultralytics.nn.modules.gam import GAM
+globals()['GAM'] = GAM
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
 globals()['CoordAttention'] = CoordAttention
