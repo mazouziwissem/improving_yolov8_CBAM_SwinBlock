@@ -1369,6 +1369,8 @@ scales:
   m: [0.67, 0.75, 768]
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
+
+# YOLOv8n backbone with Bottleneck Transformer
 backbone:
   # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
@@ -1378,30 +1380,30 @@ backbone:
   - [-1, 6, C2f, [256, True]]          # 4
   - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16
   - [-1, 6, C2f, [512, True]]          # 6
-  - [-1, 1, Conv, [1024, 3, 2]]        # 7-P5/32
-  - [-1, 3, C2f, [1024, True]]         # 8
-  - [-1, 1, SPPF, [1024, 5]]           # 9
-  - [-1, 1, BottleneckTransformer, [1024, 4, 64]]  # 10 Transformer after SPPF
+  - [-1, 1, BottleneckTransformer, [128, 4, 8]]  # 7 Transformer added here
+  - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
+  - [-1, 3, C2f, [1024, True]]         # 9
+  - [-1, 1, SPPF, [1024, 5]]           # 10
 
+# YOLOv8n head
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 11
-  - [[-1, 6], 1, Concat, [1]]                   # 12
+  - [[-1, 6], 1, Concat, [1]]                  # 12
   - [-1, 3, C2f, [512]]                         # 13
 
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 14
-  - [[-1, 4], 1, Concat, [1]]                   # 15
+  - [[-1, 4], 1, Concat, [1]]                  # 15
   - [-1, 3, C2f, [256]]                         # 16 (P3/8-small)
 
   - [-1, 1, Conv, [256, 3, 2]]                  # 17
-  - [[-1, 13], 1, Concat, [1]]                  # 18
+  - [[-1, 13], 1, Concat, [1]]                 # 18
   - [-1, 3, C2f, [512]]                         # 19 (P4/16-medium)
 
   - [-1, 1, Conv, [512, 3, 2]]                  # 20
-  - [[-1, 10], 1, Concat, [1]]                  # 21
+  - [[-1, 10], 1, Concat, [1]]                 # 21
   - [-1, 3, C2f, [1024]]                        # 22 (P5/32-large)
 
-  - [[16, 19, 22], 1, Detect, [nc]]             # 23 Detect(P3, P4, P5)
-
+  - [[16, 19, 22], 1, Detect, [nc]]            # 23 Detect(P3, P4, P5)
 # Training Hyperparameters (Same as before)
 augmentation:
   hsv_h: 0.015

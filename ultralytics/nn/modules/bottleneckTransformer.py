@@ -4,90 +4,41 @@ import torch.nn.functional as F
 
 
 
-# class BottleneckTransformer(nn.Module):
-#     def __init__(self, dim, num_heads, head_dim):
-#         super().__init__()
-#         self.num_heads = num_heads
-#         self.head_dim = head_dim
-#         self.inner_dim = num_heads * head_dim
-
-#         self.norm1 = nn.LayerNorm(dim)
-#         self.qkv = nn.Linear(dim, self.inner_dim * 3)
-#         self.attn_drop = nn.Dropout(0.1)
-#         self.proj = nn.Linear(self.inner_dim, dim)
-#         self.proj_drop = nn.Dropout(0.1)
-
-#     def forward(self, x):
-#         B, C, H, W = x.shape
-
-#         assert C == self.norm1.normalized_shape[0], f"Expected input channels {self.norm1.normalized_shape[0]}, got {C}"
-
-#         x = x.view(B, C, H * W).permute(0, 2, 1)  # (B, HW, C)
-
-#         x_norm = self.norm1(x)
-#         qkv = self.qkv(x_norm).chunk(3, dim=-1)
-#         q, k, v = map(lambda t: t.view(B, -1, self.num_heads, self.head_dim).transpose(1, 2), qkv)
-
-#         attn = (q @ k.transpose(-2, -1)) * (self.head_dim ** -0.5)
-#         attn = attn.softmax(dim=-1)
-#         attn = self.attn_drop(attn)
-
-#         out = (attn @ v).transpose(1, 2).reshape(B, -1, self.inner_dim)
-#         out = self.proj(out)
-#         out = self.proj_drop(out)
-#         out = out + x  # Residual
-
-#         out = out.permute(0, 2, 1).view(B, C, H, W)
-#         return out
-
-
-
 class BottleneckTransformer(nn.Module):
-    """
-    Simplified Bottleneck Transformer module for YOLOv8
-    """
-    def __init__(self, c1, heads=4, dim_head=64, dropout=0.1):
+    def __init__(self, dim, num_heads, head_dim):
         super().__init__()
-        self.c1 = c1  # input channels
-        self.heads = heads
-        self.dim_head = dim_head
-        inner_dim = heads * dim_head
-        
-        # Simple implementation with LayerNorm and attention
-        self.norm = nn.LayerNorm(c1)
-        self.attention = nn.MultiheadAttention(
-            embed_dim=c1,
-            num_heads=heads,
-            dropout=dropout,
-            batch_first=True
-        )
-        
-        # Simple feedforward network
-        self.mlp = nn.Sequential(
-            nn.Linear(c1, c1 * 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(c1 * 2, c1),
-            nn.Dropout(dropout)
-        )
-        
+        self.num_heads = num_heads
+        self.head_dim = head_dim
+        self.inner_dim = num_heads * head_dim
+
+        self.norm1 = nn.LayerNorm(dim)
+        self.qkv = nn.Linear(dim, self.inner_dim * 3)
+        self.attn_drop = nn.Dropout(0.1)
+        self.proj = nn.Linear(self.inner_dim, dim)
+        self.proj_drop = nn.Dropout(0.1)
+
     def forward(self, x):
         B, C, H, W = x.shape
-        
-        # Reshape to sequence for attention [B, HW, C]
-        x_seq = x.flatten(2).transpose(1, 2)
-        
-        # First residual block: LayerNorm + Attention
-        residual = x_seq
-        x_norm = self.norm(x_seq)
-        attn_out, _ = self.attention(x_norm, x_norm, x_norm)
-        x_seq = residual + attn_out
-        
-        # Second residual block: LayerNorm + MLP
-        residual = x_seq
-        x_seq = residual + self.mlp(self.norm(x_seq))
-        
-        # Reshape back to feature map [B, C, H, W]
-        x = x_seq.transpose(1, 2).reshape(B, C, H, W)
-        
-        return x
+
+        assert C == self.norm1.normalized_shape[0], f"Expected input channels {self.norm1.normalized_shape[0]}, got {C}"
+
+        x = x.view(B, C, H * W).permute(0, 2, 1)  # (B, HW, C)
+
+        x_norm = self.norm1(x)
+        qkv = self.qkv(x_norm).chunk(3, dim=-1)
+        q, k, v = map(lambda t: t.view(B, -1, self.num_heads, self.head_dim).transpose(1, 2), qkv)
+
+        attn = (q @ k.transpose(-2, -1)) * (self.head_dim ** -0.5)
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        out = (attn @ v).transpose(1, 2).reshape(B, -1, self.inner_dim)
+        out = self.proj(out)
+        out = self.proj_drop(out)
+        out = out + x  # Residual
+
+        out = out.permute(0, 2, 1).view(B, C, H, W)
+        return out
+
+
+
