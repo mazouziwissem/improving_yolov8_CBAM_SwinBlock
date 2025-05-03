@@ -5,19 +5,21 @@ from einops import rearrange
 
 from ultralytics.nn.modules.block import Bottleneck  # For SwinBlock
 
-# --------------------- 1. Attention Modules ---------------------
 class CBAM(nn.Module):
-    """Fixed CBAM with proper dimension handling"""
+    """Fixed CBAM with dimension validation"""
     def __init__(self, c1, reduction=16):
         super().__init__()
+        if c1 // reduction == 0:
+            raise ValueError(f"Channel reduction too aggressive for {c1} channels (reduction={reduction})")
+        
         self.channels = c1
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         
-        # Channel attention
+        # Channel attention with dimension validation
         self.fc = nn.Sequential(
             nn.Linear(c1, c1 // reduction),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Linear(c1 // reduction, c1)
         )
         
@@ -26,7 +28,7 @@ class CBAM(nn.Module):
 
     def forward(self, x):
         # Channel attention
-        b, c, _, _ = x.size()
+        b, c, h, w = x.size()
         avg_out = self.fc(self.avg_pool(x).view(b, c))
         max_out = self.fc(self.max_pool(x).view(b, c))
         channel = torch.sigmoid(avg_out + max_out).view(b, c, 1, 1)
@@ -37,7 +39,6 @@ class CBAM(nn.Module):
         spatial = torch.sigmoid(self.conv(torch.cat([avg_out, max_out], dim=1)))
         
         return x * channel * spatial
-
 
 class CoordAttention(nn.Module):
     """Coordinate Attention (from CA-Net)"""
