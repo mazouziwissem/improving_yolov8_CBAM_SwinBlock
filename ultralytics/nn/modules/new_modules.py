@@ -146,20 +146,21 @@ class ASPP(nn.Module):
         return self.project(res)
 
 # --------------------- 4. C2f Modification ---------------------
+# Modified C2f class with correct parameter signature
 class C2f(nn.Module):
-    """Extended C2f block with optional attention"""
-    def __init__(self, channels, depth=3, attention=False): 
+    """YOLOv8-compatible C2f with attention support"""
+    def __init__(self, c1, c2, n=1, shortcut=False, attention=False):
         super().__init__()
-        self.conv = nn.Conv2d(channels, channels*2, 1)
+        self.c = int(c2 * 0.5)  # hidden channels
+        self.conv = nn.Conv2d(c1, 2 * self.c, 1)
         self.bottlenecks = nn.ModuleList(
-            [Bottleneck(channels) for _ in range(depth)]
+            Bottleneck(self.c, shortcut) for _ in range(n)
         )
-        self.attention = CBAM(channels) if attention else nn.Identity()
+        self.attention = CBAM(2 * self.c) if attention else nn.Identity()
 
     def forward(self, x):
         x = self.conv(x)
         x1, x2 = x.chunk(2, 1)
-        for bottleneck in self.bottlenecks:
-            x2 = bottleneck(x2)
-        x = torch.cat([x1, x2], dim=1)
+        x2 = self.bottlenecks(x2)
+        x = torch.cat([x1, x2], 1)
         return self.attention(x)
