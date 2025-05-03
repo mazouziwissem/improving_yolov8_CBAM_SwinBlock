@@ -1361,19 +1361,14 @@
 # Ultralytics 🚀 AGPL-3.0 License
 
 # Parameters
-# YOLOv8n with Enhanced Bottleneck Transformer (Fixed Channels)
-# Ultralytics 🚀 AGPL-3.0 License
 
-# YOLOv8n with Width-Scaled Bottleneck Transformer
-# Ultralytics 🚀 AGPL-3.0 License
-
-# YOLOv8n with Simplified Transformer
-# Ultralytics AGPL-3.0 license
-
-# Parameters
-# nc: 1  # number of classes
-# scales: n
-
+nc: 1  # number of classes
+scales:
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
 backbone:
   # [from, repeats, module, args]
   - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
