@@ -1,4 +1,3 @@
-# coordattention.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,16 +6,17 @@ import torch.nn.functional as F
 class CoordAttention(nn.Module):
     def __init__(self, inp, reduction=32):
         super().__init__()
+        self.inp = inp
         self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
         self.pool_w = nn.AdaptiveAvgPool2d((1, None))
         mip = max(8, inp // reduction)
 
-        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1)
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(mip)
         self.act = nn.ReLU()
 
-        self.conv_h = nn.Conv2d(mip, inp, kernel_size=1)
-        self.conv_w = nn.Conv2d(mip, inp, kernel_size=1)
+        self.conv_h = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         identity = x
@@ -35,5 +35,4 @@ class CoordAttention(nn.Module):
         a_h = self.conv_h(x_h).sigmoid()
         a_w = self.conv_w(x_w).sigmoid()
 
-        out = identity * a_w * a_h
-        return out
+        return identity * a_w * a_h
