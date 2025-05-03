@@ -19,11 +19,14 @@ class BottleneckTransformer(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
+
+        assert C == self.norm1.normalized_shape[0], f"Expected input channels {self.norm1.normalized_shape[0]}, got {C}"
+
         x = x.view(B, C, H * W).permute(0, 2, 1)  # (B, HW, C)
 
-        x_norm = self.norm1(x)  # Apply LayerNorm on channels
+        x_norm = self.norm1(x)
         qkv = self.qkv(x_norm).chunk(3, dim=-1)
-        q, k, v = map(lambda t: t.reshape(B, -1, self.num_heads, self.head_dim).transpose(1, 2), qkv)
+        q, k, v = map(lambda t: t.view(B, -1, self.num_heads, self.head_dim).transpose(1, 2), qkv)
 
         attn = (q @ k.transpose(-2, -1)) * (self.head_dim ** -0.5)
         attn = attn.softmax(dim=-1)
@@ -32,7 +35,7 @@ class BottleneckTransformer(nn.Module):
         out = (attn @ v).transpose(1, 2).reshape(B, -1, self.inner_dim)
         out = self.proj(out)
         out = self.proj_drop(out)
+        out = out + x  # Residual
 
-        out = out + x  # residual
-        out = out.permute(0, 2, 1).view(B, C, H, W)  # reshape back
+        out = out.permute(0, 2, 1).view(B, C, H, W)
         return out
