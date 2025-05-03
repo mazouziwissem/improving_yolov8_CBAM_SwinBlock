@@ -104,7 +104,7 @@ from .transformer import (
 )
 
 # from .swin_block import SwinBlock
-# from .cbam import CBAM
+from .cbam import CBAM
 # from .coordAttention import CoordAttention
 # from .gam import GAM
 
@@ -188,8 +188,9 @@ __all__ = (
     "Index",
     "A2C2f",
     #SwinBlock",
-   #"CBAM",
+    "CBAM",
     "BottleneckTransformer",
+    "SimAM"
 
 )
 
