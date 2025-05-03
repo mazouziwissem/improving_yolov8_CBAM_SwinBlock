@@ -52,23 +52,40 @@ class SpatialAttention(nn.Module):
         x = self.conv(x)
         return torch.sigmoid(x)
 
+# class CBAM(nn.Module):
+#     def __init__(self, channels=None):
+#         super(CBAM, self).__init__()
+#         # On laisse le module déterminer automatiquement le nombre de canaux
+#         self.ca = ChannelAttention(channels, ratio=8 if channels and channels < 128 else 16)
+#         self.sa = SpatialAttention(kernel_size=7)
+        
+#     def forward(self, x):
+#         # Appliquez l'attention des canaux
+#         ca_output = self.ca(x)
+#         x = x * ca_output
+        
+#         # Appliquez l'attention spatiale
+#         sa_output = self.sa(x)
+#         x = x * sa_output
+        
+#         return x
+
+
+
 class CBAM(nn.Module):
     def __init__(self, channels=None):
         super(CBAM, self).__init__()
-        # On laisse le module déterminer automatiquement le nombre de canaux
+        # Initialize ChannelAttention and SpatialAttention modules
         self.ca = ChannelAttention(channels, ratio=8 if channels and channels < 128 else 16)
         self.sa = SpatialAttention(kernel_size=7)
         
     def forward(self, x):
-        # Appliquez l'attention des canaux
+        # Apply channel attention
         ca_output = self.ca(x)
         x = x * ca_output
         
-        # Appliquez l'attention spatiale
+        # Apply spatial attention
         sa_output = self.sa(x)
         x = x * sa_output
         
         return x
-
-
-

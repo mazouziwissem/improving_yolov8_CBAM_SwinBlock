@@ -1210,7 +1210,53 @@
 # Ultralytics 🚀 AGPL-3.0 License
 
 # Parameters
+# nc: 1  # number of classes
+# scales:
+#   n: [0.33, 0.25, 1024]
+#   s: [0.33, 0.50, 1024]
+#   m: [0.67, 0.75, 768]
+#   l: [1.00, 1.00, 512]
+#   x: [1.00, 1.25, 512]
+
+# # YOLOv8n backbone with Bottleneck Transformer
+# backbone:
+#   # [from, repeats, module, args]
+#   - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
+#   - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4
+#   - [-1, 3, C2f, [128, True]]          # 2
+#   - [-1, 1, Conv, [256, 3, 2]]         # 3-P3/8
+#   - [-1, 6, C2f, [256, True]]          # 4
+#   - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16
+#   - [-1, 6, C2f, [512, True]]          # 6
+#   - [-1, 1, BottleneckTransformer, [128, 4, 8]]  # 7 Transformer added here
+#   - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
+#   - [-1, 3, C2f, [1024, True]]         # 9
+#   - [-1, 1, SPPF, [1024, 5]]           # 10
+
+# # YOLOv8n head
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 11
+#   - [[-1, 6], 1, Concat, [1]]                  # 12
+#   - [-1, 3, C2f, [512]]                         # 13
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 14
+#   - [[-1, 4], 1, Concat, [1]]                  # 15
+#   - [-1, 3, C2f, [256]]                         # 16 (P3/8-small)
+
+#   - [-1, 1, Conv, [256, 3, 2]]                  # 17
+#   - [[-1, 13], 1, Concat, [1]]                 # 18
+#   - [-1, 3, C2f, [512]]                         # 19 (P4/16-medium)
+
+#   - [-1, 1, Conv, [512, 3, 2]]                  # 20
+#   - [[-1, 10], 1, Concat, [1]]                 # 21
+#   - [-1, 3, C2f, [1024]]                        # 22 (P5/32-large)
+
+#   - [[16, 19, 22], 1, Detect, [nc]]            # 23 Detect(P3, P4, P5)
+
+#==========================================cbamspd
+
 nc: 1  # number of classes
+
 scales:
   n: [0.33, 0.25, 1024]
   s: [0.33, 0.50, 1024]
@@ -1218,37 +1264,43 @@ scales:
   l: [1.00, 1.00, 512]
   x: [1.00, 1.25, 512]
 
-# YOLOv8n backbone with Bottleneck Transformer
+# Backbone with CBAM and SPD added
 backbone:
-  # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]          # 0-P1/2
-  - [-1, 1, Conv, [128, 3, 2]]         # 1-P2/4
-  - [-1, 3, C2f, [128, True]]          # 2
-  - [-1, 1, Conv, [256, 3, 2]]         # 3-P3/8
-  - [-1, 6, C2f, [256, True]]          # 4
-  - [-1, 1, Conv, [512, 3, 2]]         # 5-P4/16
-  - [-1, 6, C2f, [512, True]]          # 6
-  - [-1, 1, BottleneckTransformer, [128, 4, 8]]  # 7 Transformer added here
-  - [-1, 1, Conv, [1024, 3, 2]]        # 8-P5/32
-  - [-1, 3, C2f, [1024, True]]         # 9
-  - [-1, 1, SPPF, [1024, 5]]           # 10
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
+  - [-1, 3, C2f, [128, True]]         # 2
+  - [-1, 1, CBAM, []]                 # 3 - CBAM after initial C2f
+  - [-1, 1, Conv, [256, 3, 2]]        # 4-P3/8
+  - [-1, 6, C2f, [256, True]]         # 5
+  - [-1, 1, SPD, [256]]               # 6 - SPD after P3
+  - [-1, 1, Conv, [512, 3, 2]]        # 7-P4/16
+  - [-1, 6, C2f, [512, True]]         # 8
+  - [-1, 1, CBAM, []]                 # 9 - CBAM after P4
+  - [-1, 1, SPD, [512]]               # 10 - SPD after P4
+  - [-1, 1, Conv, [1024, 3, 2]]       # 11-P5/32
+  - [-1, 3, C2f, [1024, True]]        # 12
+  - [-1, 1, CBAM, []]                 # 13 - CBAM after P5
+  - [-1, 1, SPD, [1024]]              # 14 - SPD after P5
+  - [-1, 1, SPPF, [1024, 5]]          # 15
 
-# YOLOv8n head
+# Head (standard YOLOv8 head)
 head:
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 11
-  - [[-1, 6], 1, Concat, [1]]                  # 12
-  - [-1, 3, C2f, [512]]                         # 13
+  - [-1, 1, Conv, [512, 1, 1]]        # 16
+  - [-1, 1, nn.Upsample, ['nearest', 2]]  # 17
+  - [[10, -1], 1, Concat, [1]]        # 18
+  - [-1, 3, C2f, [512]]               # 19
 
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 14
-  - [[-1, 4], 1, Concat, [1]]                  # 15
-  - [-1, 3, C2f, [256]]                         # 16 (P3/8-small)
+  - [-1, 1, Conv, [256, 1, 1]]        # 20
+  - [-1, 1, nn.Upsample, ['nearest', 2]]  # 21
+  - [[6, -1], 1, Concat, [1]]         # 22
+  - [-1, 3, C2f, [256]]               # 23
 
-  - [-1, 1, Conv, [256, 3, 2]]                  # 17
-  - [[-1, 13], 1, Concat, [1]]                 # 18
-  - [-1, 3, C2f, [512]]                         # 19 (P4/16-medium)
+  - [-1, 1, Conv, [256, 3, 2]]        # 24
+  - [[-1, 20], 1, Concat, [1]]        # 25
+  - [-1, 3, C2f, [512]]               # 26
 
-  - [-1, 1, Conv, [512, 3, 2]]                  # 20
-  - [[-1, 10], 1, Concat, [1]]                 # 21
-  - [-1, 3, C2f, [1024]]                        # 22 (P5/32-large)
+  - [-1, 1, Conv, [512, 3, 2]]        # 27
+  - [[-1, 16], 1, Concat, [1]]        # 28
+  - [-1, 3, C2f, [1024]]              # 29
 
-  - [[16, 19, 22], 1, Detect, [nc]]            # 23 Detect(P3, P4, P5)
+  - [[23, 26, 29], 1, Detect, [nc]]   # 30 - detection head
