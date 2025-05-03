@@ -109,7 +109,7 @@ from .transformer import (
 # from .gam import GAM
 
 from .bottleneckTransformer import BottleneckTransformer
-
+from .simam import SimAM
 __all__ = (
     "Conv",
     "Conv2",

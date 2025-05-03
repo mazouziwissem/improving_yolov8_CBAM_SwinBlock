@@ -29,6 +29,9 @@ import torch.nn as nn
 # globals()['C2f'] = C2f
 from ultralytics.nn.modules.bottleneckTransformer import BottleneckTransformer
 globals()['BottleneckTransformer'] = BottleneckTransformer
+from ultralytics.nn.modules.simam import SimAM
+globals()['SimAM'] = SimAM
+
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
     AIFI,
