@@ -76,14 +76,17 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
+    def __init__(self, in_planes, reduction_ratio=4):  # MODIFIEZ ratio=16 → 4
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         
-        self.fc1 = nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False)
+        # Assurez-vous que in_planes // ratio ≥ 1
+        hidden_size = max(1, in_planes // reduction_ratio)
+        
+        self.fc1 = nn.Conv2d(in_planes, hidden_size, 1, bias=False)
         self.relu1 = nn.ReLU()
-        self.fc2 = nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False)
+        self.fc2 = nn.Conv2d(hidden_size, in_planes, 1, bias=False)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
