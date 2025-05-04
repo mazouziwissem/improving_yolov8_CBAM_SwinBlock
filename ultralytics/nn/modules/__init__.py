@@ -60,6 +60,7 @@ from .block import (
     ResNetLayer,
     SCDown,
     TorchVision,
+    SPPFCSPC,
 )
 from .conv import (
     CBAM,
@@ -190,7 +191,8 @@ __all__ = (
     "SwinBlock",
     "CBAM",
     "BottleneckTransformer",
-    "SimAM"
+    "SimAM",
+    "SPPFCSPC",
 
 )
 
