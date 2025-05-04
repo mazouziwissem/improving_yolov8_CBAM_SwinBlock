@@ -9,7 +9,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-# from ultralytics.nn.modules.swin_block import SwinBlock
+from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
 # from ultralytics.nn.modules.c3k2 import C3K2 
 # from ultralytics.nn.modules.coordAttention import CoordAttention
@@ -22,7 +22,7 @@ from ultralytics.nn.modules.cbam import CBAM
 #     ASPP
 # )
 # globals()['GAM'] = GAM
-# globals()['SwinBlock'] = SwinBlock
+globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
 # globals()['CoordAttention'] = CoordAttention
 # globals()['ASPP'] = ASPP
@@ -90,8 +90,8 @@ from ultralytics.nn.modules import (
     YOLOEDetect,
     YOLOESegment,
     v10Detect,
-    # CBAM,
-    # SwinBlock,
+    CBAM,
+    SwinBlock,
 
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load

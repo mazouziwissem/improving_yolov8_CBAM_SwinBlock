@@ -103,7 +103,7 @@ from .transformer import (
     TransformerLayer,
 )
 
-# from .swin_block import SwinBlock
+from .swin_block import SwinBlock
 from .cbam import CBAM
 # from .coordAttention import CoordAttention
 # from .gam import GAM
@@ -187,7 +187,7 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
-    #SwinBlock",
+    "SwinBlock",
     "CBAM",
     "BottleneckTransformer",
     "SimAM"
