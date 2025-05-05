@@ -1976,14 +1976,17 @@ class SAVPE(nn.Module):
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
 class SPPFCSPC(nn.Module):
-    """SPPF with Cross Stage Partial connections (compatible with YOLOv8)."""
+    """
+    SPPF + CSP connection block (Ultralytics compatible).
+    Equivalent to: c1 → reduce → SPPF → concat with shortcut → expand → c2
+    """
     def __init__(self, c1, c2, k=5):
         super().__init__()
-        c_ = c1 // 2  # hidden channels
-        self.cv1 = Conv(c1, c_, 1, 1)   # reduce
-        self.cv2 = Conv(c1, c_, 1, 1)   # shortcut
-        self.spp = SPPF(c_, c_, k)     # spatial pyramid pooling
-        self.cv3 = Conv(2 * c_, c2, 1, 1)  # final conv
+        c_ = c2 // 2  # use output channels to calculate mid channels
+        self.cv1 = Conv(c1, c_, 1, 1)  # reduce
+        self.cv2 = Conv(c1, c_, 1, 1)  # shortcut branch
+        self.spp = SPPF(c_, c_, k)    # spatial pyramid pooling
+        self.cv3 = Conv(2 * c_, c2, 1, 1)  # final conv after concat
 
     def forward(self, x):
         return self.cv3(torch.cat((self.spp(self.cv1(x)), self.cv2(x)), dim=1))
