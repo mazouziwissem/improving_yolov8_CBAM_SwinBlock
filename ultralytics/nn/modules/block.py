@@ -1980,16 +1980,17 @@ class SAVPE(nn.Module):
 class SPPFCSPC(nn.Module):
     """Cross Stage Partial Fast Spatial Pyramid Pooling with CSP (SPPFCSPC) layer."""
 
-    def __init__(self, c1, c2=1024, k=5):
+    def __init__(self, c1, c2=None, k=5):
         """
         Initialize the SPPFCSPC layer with given input/output channels and kernel size.
 
         Args:
             c1 (int): Input channels.
-            c2 (int): Output channels (default: 1024 as per your config).
-            k (int): Kernel size (default: 5 as per your config).
+            c2 (int): Output channels (default: None, will be set to c1).
+            k (int): Kernel size (default: 5).
         """
         super().__init__()
+        c2 = c2 or c1  # if c2 is None, set to c1
         c_ = c1 // 2  # hidden channels
         
         # First branch (main processing branch)
@@ -1998,7 +1999,7 @@ class SPPFCSPC(nn.Module):
         self.cv3 = Conv(c_, c_, 3, 1)  # Depthwise conv
         self.cv4 = Conv(c_, c_, 1, 1)  # Pointwise conv
         
-        # SPPF branch (similar to original SPPF but with CSP)
+        # SPPF branch
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
         self.cv5 = Conv(4 * c_, c_, 1, 1)  # After SPPF concatenation
         self.cv6 = Conv(c_, c_, 3, 1)     # Final processing
