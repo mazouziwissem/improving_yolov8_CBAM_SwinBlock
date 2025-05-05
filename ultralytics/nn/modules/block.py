@@ -1976,18 +1976,23 @@ class SAVPE(nn.Module):
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
 class SPPFCSPC(nn.Module):
-    """
-    SPPF + CSP connection block (Ultralytics compatible).
-    Equivalent to: c1 → reduce → SPPF → concat with shortcut → expand → c2
-    """
-    def __init__(self, c1, c2, k=5):
+    """SPPFCSPC: Combines SPPF with CSP-style partial connections."""
+
+    def __init__(self, c1, k=5):
+        """
+        Args:
+            c1 (int): Input channels.
+            k (int): Kernel size for the SPPF.
+        """
         super().__init__()
-        c_ = c2 // 2  # use output channels to calculate mid channels
-        self.cv1 = Conv(c1, c_, 1, 1)  # reduce
-        self.cv2 = Conv(c1, c_, 1, 1)  # shortcut branch
-        self.spp = SPPF(c_, c_, k)    # spatial pyramid pooling
-        self.cv3 = Conv(2 * c_, c2, 1, 1)  # final conv after concat
+        c_ = c1 // 2  # Hidden channels
+
+        self.cv1 = Conv(c1, c_, 1, 1)      # Left branch: input -> c_/1x1
+        self.cv2 = Conv(c1, c_, 1, 1)      # Right branch: bypass path -> c_/1x1
+        self.sppf = SPPF(c_, c_, k)        # Apply SPPF on left branch
+        self.cv3 = Conv(2 * c_, c1, 1, 1)  # Merge both paths
 
     def forward(self, x):
-        return self.cv3(torch.cat((self.spp(self.cv1(x)), self.cv2(x)), dim=1))
-
+        y1 = self.sppf(self.cv1(x))
+        y2 = self.cv2(x)
+        return self.cv3(torch.cat((y1, y2), dim=1))
