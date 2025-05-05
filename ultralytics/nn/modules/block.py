@@ -50,7 +50,8 @@ __all__ = (
     "PSA",
     "SCDown",
     "TorchVision",
-    "SPPFCSPC",
+    "ASPP",
+  
 )
 
 
