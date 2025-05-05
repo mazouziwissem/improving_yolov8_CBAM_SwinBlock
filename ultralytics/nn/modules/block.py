@@ -1976,23 +1976,15 @@ class SAVPE(nn.Module):
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
 class SPPFCSPC(nn.Module):
-    """SPPFCSPC: Combines SPPF with CSP-style partial connections."""
-
     def __init__(self, c1, k=5):
-        """
-        Args:
-            c1 (int): Input channels.
-            k (int): Kernel size for the SPPF.
-        """
         super().__init__()
-        c_ = c1 // 2  # Hidden channels
-
-        self.cv1 = Conv(c1, c_, 1, 1)      # Left branch: input -> c_/1x1
-        self.cv2 = Conv(c1, c_, 1, 1)      # Right branch: bypass path -> c_/1x1
-        self.sppf = SPPF(c_, c_, k)        # Apply SPPF on left branch
-        self.cv3 = Conv(2 * c_, c1, 1, 1)  # Merge both paths
+        c_ = c1 // 2
+        self.cv1 = Conv(c1, c_, 1, 1)         # path 1
+        self.cv2 = Conv(c1, c_, 1, 1)         # path 2
+        self.sppf = SPPF(c_, c_, k)           # SPPF keeps output channels = c_
+        self.cv3 = Conv(2 * c_, c1, 1, 1)     # concat + final conv
 
     def forward(self, x):
-        y1 = self.sppf(self.cv1(x))
-        y2 = self.cv2(x)
+        y1 = self.sppf(self.cv1(x))  # left
+        y2 = self.cv2(x)             # right
         return self.cv3(torch.cat((y1, y2), dim=1))
