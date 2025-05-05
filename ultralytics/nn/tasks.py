@@ -92,7 +92,6 @@ from ultralytics.nn.modules import (
     v10Detect,
     CBAM,
     SwinBlock,
-    SPPFCSPC,
     ASPP,
 
 )
