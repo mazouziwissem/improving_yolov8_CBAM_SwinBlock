@@ -1975,16 +1975,55 @@ class SAVPE(nn.Module):
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
+
+
 class SPPFCSPC(nn.Module):
-    def __init__(self, c1, k=5):
+    """Cross Stage Partial Fast Spatial Pyramid Pooling with CSP (SPPFCSPC) layer."""
+
+    def __init__(self, c1, c2=1024, k=5):
+        """
+        Initialize the SPPFCSPC layer with given input/output channels and kernel size.
+
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels (default: 1024 as per your config).
+            k (int): Kernel size (default: 5 as per your config).
+        """
         super().__init__()
-        c_ = c1 // 2
-        self.cv1 = Conv(c1, c_, 1, 1)         # path 1
-        self.cv2 = Conv(c1, c_, 1, 1)         # path 2
-        self.sppf = SPPF(c_, c_, k)           # SPPF keeps output channels = c_
-        self.cv3 = Conv(2 * c_, c1, 1, 1)     # concat + final conv
+        c_ = c1 // 2  # hidden channels
+        
+        # First branch (main processing branch)
+        self.cv1 = Conv(c1, c_, 1, 1)  # Pointwise conv to reduce channels
+        self.cv2 = Conv(c1, c_, 1, 1)  # Parallel pointwise conv
+        self.cv3 = Conv(c_, c_, 3, 1)  # Depthwise conv
+        self.cv4 = Conv(c_, c_, 1, 1)  # Pointwise conv
+        
+        # SPPF branch (similar to original SPPF but with CSP)
+        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
+        self.cv5 = Conv(4 * c_, c_, 1, 1)  # After SPPF concatenation
+        self.cv6 = Conv(c_, c_, 3, 1)     # Final processing
+        
+        # Output conv
+        self.cv7 = Conv(2 * c_, c2, 1, 1)  # Combine both branches
 
     def forward(self, x):
-        y1 = self.sppf(self.cv1(x))  # left
-        y2 = self.cv2(x)             # right
-        return self.cv3(torch.cat((y1, y2), dim=1))
+        """Forward pass through SPPFCSPC layer."""
+        # First branch
+        x1 = self.cv1(x)
+        x2 = self.cv3(x1)
+        x3 = self.cv4(x2)
+        
+        # SPPF branch
+        y1 = x3
+        y2 = self.m(y1)
+        y3 = self.m(y2)
+        y4 = self.m(y3)
+        y = torch.cat((y1, y2, y3, y4), 1)
+        y = self.cv5(y)
+        y = self.cv6(y)
+        
+        # Second parallel branch
+        x4 = self.cv2(x)
+        
+        # Combine both branches
+        return self.cv7(torch.cat((y, x4), 1))
