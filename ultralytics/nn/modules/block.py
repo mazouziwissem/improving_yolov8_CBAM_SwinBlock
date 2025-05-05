@@ -1978,53 +1978,23 @@ class SAVPE(nn.Module):
 
 
 class SPPFCSPC(nn.Module):
-    """Cross Stage Partial Fast Spatial Pyramid Pooling with CSP (SPPFCSPC) layer."""
-
-    def __init__(self, c1, c2=None, k=5):
-        """
-        Initialize the SPPFCSPC layer with given input/output channels and kernel size.
-
-        Args:
-            c1 (int): Input channels.
-            c2 (int): Output channels (default: None, will be set to c1).
-            k (int): Kernel size (default: 5).
-        """
+    # SPPF with CSP connections
+    def __init__(self, c1, c2, k=5):  # equivalent to SPP(k=(5, 9, 13))
         super().__init__()
-        c2 = c2 or c1  # if c2 is None, set to c1
         c_ = c1 // 2  # hidden channels
-        
-        # First branch (main processing branch)
-        self.cv1 = Conv(c1, c_, 1, 1)  # Pointwise conv to reduce channels
-        self.cv2 = Conv(c1, c_, 1, 1)  # Parallel pointwise conv
-        self.cv3 = Conv(c_, c_, 3, 1)  # Depthwise conv
-        self.cv4 = Conv(c_, c_, 1, 1)  # Pointwise conv
-        
-        # SPPF branch
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c_, c_, 3, 1)
+        self.cv3 = Conv(c_, c_, 1, 1)
+        self.cv4 = Conv(c_, c_, 3, 1)
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
-        self.cv5 = Conv(4 * c_, c_, 1, 1)  # After SPPF concatenation
-        self.cv6 = Conv(c_, c_, 3, 1)     # Final processing
-        
-        # Output conv
-        self.cv7 = Conv(2 * c_, c2, 1, 1)  # Combine both branches
+        self.cv5 = Conv(4 * c_, c_, 1, 1)
+        self.cv6 = Conv(c_, c_, 3, 1)
+        self.cv7 = Conv(2 * c_, c2, 1, 1)
 
     def forward(self, x):
-        """Forward pass through SPPFCSPC layer."""
-        # First branch
         x1 = self.cv1(x)
-        x2 = self.cv3(x1)
-        x3 = self.cv4(x2)
-        
-        # SPPF branch
-        y1 = x3
-        y2 = self.m(y1)
-        y3 = self.m(y2)
-        y4 = self.m(y3)
-        y = torch.cat((y1, y2, y3, y4), 1)
-        y = self.cv5(y)
-        y = self.cv6(y)
-        
-        # Second parallel branch
-        x4 = self.cv2(x)
-        
-        # Combine both branches
-        return self.cv7(torch.cat((y, x4), 1))
+        x2 = self.cv3(self.cv2(x1))
+        x3 = self.m(x2)
+        y1 = self.cv6(self.cv5(torch.cat([x2, x3, self.m(x3), self.m(self.m(x3))], 1)))
+        y2 = self.cv4(x1)
+        return self.cv7(torch.cat([y1, y2], dim=1))
