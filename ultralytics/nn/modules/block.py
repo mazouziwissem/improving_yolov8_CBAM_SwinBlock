@@ -1977,24 +1977,42 @@ class SAVPE(nn.Module):
 
 
 
-class SPPFCSPC(nn.Module):
-    # SPPF with CSP connections
-    def __init__(self, c1, c2, k=5):  # equivalent to SPP(k=(5, 9, 13))
-        super().__init__()
-        c_ = c1 // 2  # hidden channels
-        self.cv1 = Conv(c1, c_, 1, 1)
-        self.cv2 = Conv(c_, c_, 3, 1)
-        self.cv3 = Conv(c_, c_, 1, 1)
-        self.cv4 = Conv(c_, c_, 3, 1)
-        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
-        self.cv5 = Conv(4 * c_, c_, 1, 1)
-        self.cv6 = Conv(c_, c_, 3, 1)
-        self.cv7 = Conv(2 * c_, c2, 1, 1)
+
+
+
+
+class ASPP(nn.Module):
+    def __init__(self, c1, c2, dilations=[3, 6, 9]):
+        super(ASPP, self).__init__()
+        hidden_dim = c1 // 2  # Reduced channels for efficiency
+        self.conv1 = nn.Conv2d(c1, hidden_dim, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(hidden_dim)
+        self.act = nn.SiLU()
+        
+        # Atrous (dilated) convolutions
+        self.conv2 = nn.Conv2d(c1, hidden_dim, 3, padding=dilations[0], dilation=dilations[0], bias=False)
+        self.conv3 = nn.Conv2d(c1, hidden_dim, 3, padding=dilations[1], dilation=dilations[1], bias=False)
+        self.conv4 = nn.Conv2d(c1, hidden_dim, 3, padding=dilations[2], dilation=dilations[2], bias=False)
+        
+        # Global Average Pooling branch
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.conv_gap = nn.Conv2d(c1, hidden_dim, 1, bias=False)
+        
+        # Output projection
+        self.project = nn.Conv2d(hidden_dim * 5, c2, 1, bias=False)
+        self.bn_out = nn.BatchNorm2d(c2)
 
     def forward(self, x):
-        x1 = self.cv1(x)
-        x2 = self.cv3(self.cv2(x1))
-        x3 = self.m(x2)
-        y1 = self.cv6(self.cv5(torch.cat([x2, x3, self.m(x3), self.m(self.m(x3))], 1)))
-        y2 = self.cv4(x1)
-        return self.cv7(torch.cat([y1, y2], dim=1))
+        x1 = self.act(self.bn1(self.conv1(x)))
+        x2 = self.act(self.conv2(x))
+        x3 = self.act(self.conv3(x))
+        x4 = self.act(self.conv4(x))
+        
+        # Global Average Pooling
+        gap = self.gap(x)
+        x5 = self.act(self.conv_gap(gap))
+        x5 = F.interpolate(x5, size=x.size()[2:], mode='bilinear', align_corners=False)
+        
+        # Concatenate all branches
+        out = torch.cat([x1, x2, x3, x4, x5], dim=1)
+        return self.bn_out(self.project(out))
