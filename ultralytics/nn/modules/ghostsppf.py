@@ -33,9 +33,11 @@ class GhostSPPF(nn.Module):
     """ Ghost SPPF: Spatial Pyramid Pooling Fast with Ghost Convs """
     def __init__(self, c1, c2, k=5):
         super().__init__()
-        c_ = c1 // 2  # Intermediate channels
-        self.cv1 = GhostConv(c1, c_, 1, 1)
-        self.cv2 = GhostConv(c_ * 4, c2, 1, 1)
+        # Choisir un nombre intermédiaire correct (ex. 512 si entrée = 1024)
+        c_ = c2 // 2  # ou c_ = c1 // 2 si tu veux, mais important d'assurer compatibilité ici
+        self.cv1 = GhostConv(c1, c_, 1, 1)  # Réduit les canaux
+        self.cv2 = GhostConv(c_ * 4, c2, 1, 1)  # Combine les 4 branches après concat
+
         self.maxpool = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
@@ -44,3 +46,4 @@ class GhostSPPF(nn.Module):
         y2 = self.maxpool(y1)
         y3 = self.maxpool(y2)
         return self.cv2(torch.cat([x, y1, y2, y3], 1))
+
