@@ -107,6 +107,7 @@ from .transformer import (
 
 from .swin_block import SwinBlock
 from .cbam import CBAM
+from .ghostsppf import GhostSPPF
 # from .coordAttention import CoordAttention
 # from .gam import GAM
 
@@ -191,6 +192,7 @@ __all__ = (
     "A2C2f",
     "SwinBlock",
     "CBAM",
+    "GhostSPPF",
     "BottleneckTransformer",
     "SimAM",
     "ASPP",
