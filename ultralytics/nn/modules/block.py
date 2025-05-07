@@ -50,7 +50,7 @@ __all__ = (
     "PSA",
     "SCDown",
     "TorchVision",
-    "ASPP",
+ 
   
 )
 
@@ -1977,37 +1977,4 @@ class SAVPE(nn.Module):
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
 
-
-
-
-
-
-class ASPP(nn.Module):
-    def __init__(self, c1, c2=None, dilations=[1, 3, 6, 9]):
-        super().__init__()
-        c2 = c2 or c1  # default output channels same as input
-        hidden_dim = c1 // 2
-        self.conv1 = Conv(c1, hidden_dim, 1)
-        
-        # Atrous convolutions
-        self.conv2 = Conv(c1, hidden_dim, 3, d=dilations[1])
-        self.conv3 = Conv(c1, hidden_dim, 3, d=dilations[2])
-        self.conv4 = Conv(c1, hidden_dim, 3, d=dilations[3])
-        
-        # Global Average Pooling
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        self.conv_gap = Conv(c1, hidden_dim, 1)
-        
-        # Output projection
-        self.project = Conv(hidden_dim * 5, c2, 1)
-        
-    def forward(self, x):
-        x1 = self.conv1(x)
-        x2 = self.conv2(x)
-        x3 = self.conv3(x)
-        x4 = self.conv4(x)
-        
-        gap = self.conv_gap(self.gap(x))
-        gap = F.interpolate(gap, size=x.shape[2:], mode='bilinear', align_corners=False)
-        
-        return self.project(torch.cat([x1, x2, x3, x4, gap], dim=1))
+  

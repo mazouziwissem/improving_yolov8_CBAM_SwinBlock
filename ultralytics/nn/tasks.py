@@ -11,29 +11,12 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.modules.swin_block import SwinBlock
 from ultralytics.nn.modules.cbam import CBAM
-from ultralytics.nn.modules.ghostsppf import GhostSPPF
-# from ultralytics.nn.modules.c3k2 import C3K2 
-# from ultralytics.nn.modules.coordAttention import CoordAttention
-# from ultralytics.nn.modules.gam import GAM
 
-# from ultralytics.nn.modules.new_modules import (
-#     C2f, 
-#     CBAM, 
-#     CoordAttention, 
-#     SwinBlock, 
-#     ASPP
-# )
-# globals()['GAM'] = GAM
+
 globals()['SwinBlock'] = SwinBlock
 globals()['CBAM'] = CBAM
-globals()['GhostSPPF'] = GhostSPPF
-# globals()['CoordAttention'] = CoordAttention
-# globals()['ASPP'] = ASPP
-# globals()['C2f'] = C2f
-from ultralytics.nn.modules.bottleneckTransformer import BottleneckTransformer
-globals()['BottleneckTransformer'] = BottleneckTransformer
-from ultralytics.nn.modules.simam import SimAM
-globals()['SimAM'] = SimAM
+
+
 
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
@@ -95,7 +78,7 @@ from ultralytics.nn.modules import (
     v10Detect,
     CBAM,
     SwinBlock,
-    ASPP,
+   
 
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
