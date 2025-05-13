@@ -10,15 +10,15 @@ class ChannelAttention(nn.Module):
         self.in_planes = in_planes
         self.ratio = ratio
         
-        # Si in_planes est spécifié, on crée le MLP immédiatement
+        
         if in_planes is not None:
             self.create_mlp(in_planes)
         else:
-            # Sinon, le MLP sera créé au premier forward pass
+            
             self.shared_MLP = None
             
     def create_mlp(self, in_planes):
-        # Assurez-vous que le ratio ne réduit pas les canaux à zéro
+        
         reduced_planes = max(1, in_planes // self.ratio)
         self.shared_MLP = nn.Sequential(
             nn.Conv2d(in_planes, reduced_planes, 1, bias=False),
@@ -27,7 +27,7 @@ class ChannelAttention(nn.Module):
         )
             
     def forward(self, x):
-        # Si le MLP n'a pas été créé, on le crée maintenant avec les bonnes dimensions
+        
         if self.shared_MLP is None:
             _, c, _, _ = x.shape
             self.create_mlp(c)
@@ -55,16 +55,16 @@ class SpatialAttention(nn.Module):
 class CBAM(nn.Module):
     def __init__(self, channels=None):
         super(CBAM, self).__init__()
-        # On laisse le module déterminer automatiquement le nombre de canaux
+        
         self.ca = ChannelAttention(channels, ratio=8 if channels and channels < 128 else 16)
         self.sa = SpatialAttention(kernel_size=7)
         
     def forward(self, x):
-        # Appliquez l'attention des canaux
+        
         ca_output = self.ca(x)
         x = x * ca_output
         
-        # Appliquez l'attention spatiale
+        
         sa_output = self.sa(x)
         x = x * sa_output
         

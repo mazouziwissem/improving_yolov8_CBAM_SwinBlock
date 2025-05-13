@@ -37,7 +37,7 @@ class SwinBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
 
-        # padding if not divisible by window_size
+       
         pad_h = (self.window_size - H % self.window_size) % self.window_size
         pad_w = (self.window_size - W % self.window_size) % self.window_size
         x = F.pad(x, (0, pad_w, 0, pad_h))  # pad last two dims
